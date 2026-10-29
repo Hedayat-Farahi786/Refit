@@ -186,6 +186,57 @@ Bedrock, Vertex or Foundry variable is set. Model aliases stay `sonnet` (the cur
   - Azure DevOps cannot pre-fill a description from a URL, so Refit shows a **Copy description**
     button next to the link.
 
+### 2.7 Built for Angular now, ready for other app types later
+
+**Refit's own UI stays Angular.** The framework Refit is written in does not limit which apps it can
+modernize. The UI only talks to the server over REST and SSE. Angular is the right choice here for
+two reasons. Our developers know it, so they can maintain Refit. And the Brand studio has to render
+real PrimeNG components with the brand, which needs Angular on the page.
+
+**The engine is built so other stacks can be added.**
+
+- **Already neutral:** the pipeline, providers, budgets, guard, git, browser capture, sign-in,
+  API-call comparison, report, PR, events and UI.
+- **Angular-specific** (moves behind a `StackAdapter` interface in `server/src/stacks/angular/`):
+  - detection and scan facts
+  - route-to-page extraction
+  - install, build, serve and test commands, and the "compiled" message
+  - upgrade hops
+  - design-system install and theme files
+  - default protected paths
+  - readiness rules
+  - the stack's playbook section
+
+```ts
+interface StackAdapter {
+  id: string;                                   // 'angular' now; 'react', 'vue', ... later
+  detect(repo): Promise<{ confidence: number } | null>;
+  scan(repo): Promise<StackScan>;               // facts, pages, findings, commands
+  upgradePlan?(scan, target): UpgradeHop[];
+  designSystem: DesignSystemAdapter;            // install + generate theme files from the brand
+  playbook: { rules: string; page: string; checklist: string };  // layered on playbook/common
+  protectedPaths: string[]; sensitivePaths: string[];
+}
+```
+
+- **The brand stays framework-neutral.** Colors, font and radius become CSS variables and design
+  tokens. Each design-system adapter turns them into its own theme file. PrimeNG is the first.
+- **A lint rule keeps the core from importing Angular code directly.** The boundary stays real
+  instead of being a naming convention.
+- **Adding a stack later means:** one adapter folder, its playbook files, its protected paths and a
+  fixture app. No changes to the pipeline or the UI.
+- **Licensing is the same story elsewhere.** PrimeReact 11 and PrimeVue 5 moved to the same
+  commercial PrimeUI license. The last MIT versions are PrimeReact 10.9 and PrimeVue 4.5. The
+  design-system choice for other stacks is a separate decision when we get there.
+
+**Honest limit.** Full-stack frameworks (Next.js, Nuxt, SvelteKit, Blazor, ASP.NET Razor) mix UI and
+server code in the same files. In those apps a file-level guard is weaker, and the browser cannot see
+server-side data calls. Those stacks would start as **yellow** and need content-aware checks.
+Single-page apps (Angular, React, Vue) fit Refit's model as well as Angular does.
+
+I will **not** build React or Vue adapters now. We have no test apps for them yet, and the spec
+targets Angular. Only the boundary is built now.
+
 ---
 
 ## 3. Architecture
@@ -203,7 +254,10 @@ refit/
     store/                atomic state.json, events.jsonl per run, interrupted-run recovery
     proc/                 spawn with timeout, tree kill, output tail cap, secret redaction
     git/                  clone, branch, exclude, changed files, revert, commit, diff, push, remote URLs
-    scan/                 versions, UI libs, MSAL, routes (TS AST), components, readiness, commands
+    scan/                 stack-neutral scan: git state, lockfile, scripts, MSAL, size, picks the adapter
+    stacks/               StackAdapter interface + registry
+      angular/            versions, UI libs, routes (TS AST), components, readiness, commands,
+                          upgrade hops, PrimeNG design-system adapter, protected paths
     browser/              profile lock, sign-in window, capture, API recorder and normalization
     providers/            AgentProvider interface, claude, copilot, dry run, availability
     guard/                protected and sensitive classification, post-task revert
@@ -217,7 +271,10 @@ refit/
                           developer), results (comparison stage, PR), history, brand studio, settings
     ui/                   status chip, empty state, elapsed timer, copy button, skeletons
   web/e2e/                Playwright tests of Refit itself
-  playbook/ brand/ fixtures/ data/ workspaces/   as in the spec
+  playbook/common/        RULES, PAGE_PROCEDURE, UI_CHECKLIST: the stack-neutral parts of appendix A–C
+  playbook/angular/       Angular- and PrimeNG-specific rules layered on top (the system prompt is
+                          still identical across calls within a stack, so caching keeps working)
+  brand/ fixtures/ data/ workspaces/   as in the spec
   .github/workflows/ci.yml  Ubuntu, Windows and macOS × Node 22 and 24: lint, typecheck, unit, integration
 ```
 
