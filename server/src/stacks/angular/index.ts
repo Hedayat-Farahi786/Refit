@@ -84,6 +84,7 @@ export const angularAdapter: StackAdapter = {
         hashRouting: routes.hashRouting,
         project: workspace.project,
         sourceRoot: workspace.sourceRoot,
+        baseHref: workspace.baseHref,
       },
     };
   },

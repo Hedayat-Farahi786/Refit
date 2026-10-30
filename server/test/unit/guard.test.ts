@@ -2,7 +2,7 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { appRelative, classifyPath, enforceGuard, isDataAccessCode, type GuardPolicy } from '../../src/guard/guard.js';
-import { commitAll, excludeFromGit, headCommit } from '../../src/git/workspace.js';
+import { commitAll, ensureCommitIdentity, excludeFromGit, headCommit } from '../../src/git/workspace.js';
 import { REPO_ROOT, gitIn, tempDir } from '../helpers/repos.js';
 import { loadConfig } from '../../src/config/config.js';
 
@@ -67,6 +67,7 @@ describe('enforceGuard', () => {
     await write('angular.json', '{}\n');
     await write('.gitignore', '.env*\nnode_modules/\n');
     await gitIn(repo, 'init', '-q', '-b', 'main');
+    await ensureCommitIdentity(repo);
     await excludeFromGit(repo, '.refit/');
     await gitIn(repo, 'add', '-A');
     await gitIn(repo, 'commit', '-q', '-m', 'base');

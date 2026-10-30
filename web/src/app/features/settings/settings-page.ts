@@ -11,6 +11,7 @@ import { Textarea } from 'primeng/textarea';
 import { ToggleSwitch } from 'primeng/toggleswitch';
 import { Api } from '../../core/api';
 import { AppState } from '../../core/app-state';
+import { relativeTime } from '../../core/format';
 import { Notify } from '../../core/notify';
 import { Theme, type ThemeMode } from '../../core/theme';
 
@@ -36,6 +37,60 @@ import { Theme, type ThemeMode } from '../../core/theme';
             <p-select inputId="ui-brand" [options]="state.brands()" optionLabel="name" optionValue="id" [ngModel]="state.uiBrand()?.id" (ngModelChange)="setUiBrand($event)" [fluid]="true" />
             <span class="field-hint">Refit renders itself with the same brand generator it uses for your apps.</span>
           </div>
+        </div>
+      </section>
+
+      <section class="panel" aria-labelledby="signin-title">
+        <div class="panel-header">
+          <div class="stack" style="--stack-gap: 2px">
+            <h2 id="signin-title">Microsoft sign-in</h2>
+            <p class="muted small">Apps that use Microsoft sign-in need a signed-in browser for screenshots. Sign in once; Refit's browser remembers it for later runs.</p>
+          </div>
+        </div>
+        <div class="panel-body stack">
+          <div class="signin-status" aria-live="polite">
+            @if (state.state()?.signInOpen) {
+              <i class="pi pi-window-maximize info-icon" aria-hidden="true"></i>
+              <div class="stack" style="--stack-gap: 4px">
+                <strong>A browser window is open</strong>
+                <span class="soft small">Sign in there with the test account (including any popup or MFA). When Microsoft asks "Stay signed in?", choose Yes. Then come back here.</span>
+              </div>
+            } @else if (state.state()?.settings?.lastSignInAt; as savedAt) {
+              <i class="pi pi-check-circle ok-icon" aria-hidden="true"></i>
+              <div class="stack" style="--stack-gap: 4px">
+                <strong>Session saved {{ ago(savedAt) }}</strong>
+                <span class="soft small">Runs use it to sign in silently. Sign in again if a run says sign-in is needed.</span>
+              </div>
+            } @else {
+              <i class="pi pi-info-circle muted" aria-hidden="true"></i>
+              <div class="stack" style="--stack-gap: 4px">
+                <strong>No saved session yet</strong>
+                <span class="soft small">Only needed for apps that use Microsoft sign-in.</span>
+              </div>
+            }
+          </div>
+          <div class="cluster">
+            @if (state.state()?.signInOpen) {
+              <p-button label="I'm signed in" icon="pi pi-check" [loading]="signInBusy()" (onClick)="finishSignIn()" />
+            } @else {
+              <p-button
+                label="Sign in once"
+                icon="pi pi-sign-in"
+                [outlined]="true"
+                [loading]="signInBusy()"
+                [disabled]="!!state.state()?.activeRunId"
+                (onClick)="openSignIn()"
+              />
+              @if (state.state()?.activeRunId) {
+                <span class="muted small">Available when no run is in progress.</span>
+              }
+            }
+          </div>
+          <ul class="tips small soft">
+            <li>Ask IT for a dedicated test account. Do not use your personal account.</li>
+            <li>Conditional Access policies can block automated browsers. If sign-in keeps failing, ask IT to allow the test account on this computer.</li>
+            <li>The app's dev server port (usually 4200) must be a redirect URI of the app in Entra ID.</li>
+          </ul>
         </div>
       </section>
 
@@ -206,6 +261,31 @@ import { Theme, type ThemeMode } from '../../core/theme';
     textarea {
       width: 100%;
     }
+    .signin-status {
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      padding: 14px 16px;
+      border-radius: var(--refit-radius-lg);
+      background: var(--refit-subtle);
+    }
+    .signin-status > .pi {
+      font-size: 1.15rem;
+      margin-top: 2px;
+    }
+    .ok-icon {
+      color: var(--refit-success);
+    }
+    .info-icon {
+      color: var(--refit-info);
+    }
+    .tips {
+      margin: 0;
+      padding-left: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
     .save {
       position: sticky;
       bottom: 16px;
@@ -303,6 +383,38 @@ export class SettingsPage {
   protected reset(): void {
     const config = this.state.state()?.config;
     if (config) this.fill(config);
+  }
+
+  protected readonly signInBusy = signal(false);
+
+  protected ago(iso: string): string {
+    return relativeTime(iso);
+  }
+
+  protected async openSignIn(): Promise<void> {
+    this.signInBusy.set(true);
+    try {
+      await this.api.openSignIn();
+      this.notify.info('Sign-in window opened', 'Sign in there, then come back and choose "I\'m signed in".');
+      this.state.refresh();
+    } catch (error) {
+      this.notify.error(error);
+    } finally {
+      this.signInBusy.set(false);
+    }
+  }
+
+  protected async finishSignIn(): Promise<void> {
+    this.signInBusy.set(true);
+    try {
+      await this.api.finishSignIn();
+      this.notify.success('Session saved', 'Runs will sign in with it.');
+      this.state.refresh();
+    } catch (error) {
+      this.notify.error(error);
+    } finally {
+      this.signInBusy.set(false);
+    }
   }
 
   protected async setUiBrand(id: string): Promise<void> {

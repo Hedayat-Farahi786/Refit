@@ -20,7 +20,7 @@ const brandSchema = z.object({
   radius: z.number(),
 });
 
-export function registerSettingsRoutes(app: FastifyInstance, ctx: ServerContext, activeRunId: () => string | null): void {
+export function registerSettingsRoutes(app: FastifyInstance, ctx: ServerContext, live: { activeRunId: () => string | null; signInOpen: () => boolean }): void {
   app.get('/api/state', async (): Promise<StateResponse> => {
     const state = ctx.store.snapshot();
     const config = ctx.getConfig();
@@ -31,7 +31,8 @@ export function registerSettingsRoutes(app: FastifyInstance, ctx: ServerContext,
       brands: state.brands,
       settings: state.settings,
       config: { ...editablePart(config), targetAngularMajor: config.targetAngularMajor, port: config.port },
-      activeRunId: activeRunId(),
+      activeRunId: live.activeRunId(),
+      signInOpen: live.signInOpen(),
       platform: process.platform === 'win32' ? 'windows' : process.platform === 'darwin' ? 'macos' : 'linux',
     };
   });

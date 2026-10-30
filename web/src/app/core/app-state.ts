@@ -55,7 +55,7 @@ export class AppState {
     source.onmessage = (message: MessageEvent<string>) => {
       const event = JSON.parse(message.data) as StateEvent;
       for (const listener of this.listeners) listener(event);
-      if (event.type === 'state-changed' && event.reason !== 'connected') this.scheduleRefresh(60);
+      if ((event.type === 'state-changed' && event.reason !== 'connected') || event.type === 'sign-in') this.scheduleRefresh(60);
     };
   }
 

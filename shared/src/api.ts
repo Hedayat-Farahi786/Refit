@@ -83,6 +83,8 @@ export interface AngularScan {
   hashRouting: boolean;
   project: string | null;
   sourceRoot: string;
+  /** Base path the app is served under, e.g. "/portal/" (null for "/"). */
+  baseHref: string | null;
 }
 
 export interface GitInfo {
@@ -244,6 +246,9 @@ export interface PageRunState {
   costUsd: number;
   shots: { before: ShotSet; after: ShotSet };
   apiDiff?: ApiDiff;
+  newConsoleErrors?: string[];
+  /** True when the page needed Microsoft sign-in during screenshots. */
+  signInNeeded?: boolean;
   changedFiles?: string[];
   commit?: string;
 }
@@ -350,6 +355,8 @@ export interface StateResponse {
   settings: UiSettings;
   config: EditableConfig & { targetAngularMajor: number; port: number };
   activeRunId: string | null;
+  /** True while the "Sign in once" window is open (runs cannot start then). */
+  signInOpen: boolean;
   platform: 'windows' | 'macos' | 'linux';
 }
 

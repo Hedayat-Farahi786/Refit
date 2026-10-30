@@ -1,9 +1,10 @@
-import { Component, computed, input } from '@angular/core';
+import { Component, ElementRef, computed, input, signal, viewChild } from '@angular/core';
 import type { PageRunState, RunRecord, StepState } from '@refit/shared';
 import { ProgressBar } from 'primeng/progressbar';
 import { Tooltip } from 'primeng/tooltip';
 import { duration, usd } from '../../core/format';
 import { StatusChip } from '../../ui/status-chip';
+import { CompareStage } from './compare-stage';
 
 const STEP_ICON: Record<StepState['status'], string> = {
   pending: 'pi-circle',
@@ -17,7 +18,7 @@ const STEP_ICON: Record<StepState['status'], string> = {
 /** The calm view for everyone: what is happening now, the steps, and page cards that fill in. */
 @Component({
   selector: 'app-simple-view',
-  imports: [ProgressBar, Tooltip, StatusChip],
+  imports: [ProgressBar, Tooltip, StatusChip, CompareStage],
   template: `
     <div class="grid">
       <div class="main stack" style="--stack-gap: 24px">
@@ -27,6 +28,16 @@ const STEP_ICON: Record<StepState['status'], string> = {
             <p class="activity" aria-live="polite">{{ run().activity || 'Getting started' }}</p>
             <p-progressbar [value]="progress()" [showValue]="false" class="progress" [attr.aria-label]="'Progress ' + progress() + ' percent'" />
             <p class="muted small">Step {{ activeIndex() + 1 }} of {{ run().steps.length }}: {{ activeStep()?.label }}</p>
+          </section>
+        }
+
+        @if (hasShots()) {
+          <section class="panel compare" aria-labelledby="compare-title" #compare>
+            <div class="panel-header">
+              <h2 id="compare-title">Before and after</h2>
+              <span class="muted small">{{ shotsSummary() }}</span>
+            </div>
+            <app-compare-stage [pages]="run().pages" [(selectedId)]="comparePage" />
           </section>
         }
 
@@ -45,10 +56,10 @@ const STEP_ICON: Record<StepState['status'], string> = {
                   </div>
                   <app-status-chip [page]="page.status" />
                 </div>
-                <div class="thumbs">
+                <button type="button" class="thumbs" (click)="openCompare(page)" [disabled]="!page.shots.before.desktop" [attr.aria-label]="'Compare before and after for ' + page.name">
                   <figure>
                     @if (page.shots.before.desktop; as src) {
-                      <img [src]="src" [alt]="'Before: ' + page.name" loading="lazy" />
+                      <img [src]="src" alt="" loading="lazy" />
                     } @else {
                       <div class="thumb-empty" aria-hidden="true"><i class="pi pi-image"></i></div>
                     }
@@ -56,13 +67,13 @@ const STEP_ICON: Record<StepState['status'], string> = {
                   </figure>
                   <figure>
                     @if (page.shots.after.desktop; as src) {
-                      <img [src]="src" [alt]="'After: ' + page.name" loading="lazy" />
+                      <img [src]="src" alt="" loading="lazy" />
                     } @else {
                       <div class="thumb-empty" aria-hidden="true"><i class="pi" [class]="page.status === 'working' ? 'pi-spin pi-spinner' : 'pi-image'"></i></div>
                     }
                     <figcaption class="tiny muted">After</figcaption>
                   </figure>
-                </div>
+                </button>
                 <ul class="changes small" role="list">
                   @for (change of changesOf(page); track $index) {
                     <li>{{ change }}</li>
@@ -180,9 +191,26 @@ const STEP_ICON: Record<StepState['status'], string> = {
       font-size: 0.95rem;
     }
     .thumbs {
+      all: unset;
+      box-sizing: border-box;
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 8px;
+      border-radius: var(--refit-radius);
+      cursor: zoom-in;
+    }
+    .thumbs:disabled {
+      cursor: default;
+    }
+    .thumbs:focus-visible {
+      outline: 2px solid var(--p-primary-color);
+      outline-offset: 3px;
+    }
+    .thumbs:not(:disabled):hover img {
+      border-color: var(--p-primary-color);
+    }
+    .compare {
+      overflow: hidden;
     }
     figure {
       margin: 0;
@@ -330,6 +358,20 @@ const STEP_ICON: Record<StepState['status'], string> = {
 export class SimpleView {
   readonly run = input.required<RunRecord>();
   readonly now = input.required<number>();
+  protected readonly comparePage = signal<string | null>(null);
+  private readonly compareSection = viewChild<ElementRef<HTMLElement>>('compare');
+
+  protected readonly hasShots = computed(() => this.run().pages.some((page) => page.shots.before.desktop));
+  protected readonly shotsSummary = computed(() => {
+    const pages = this.run().pages;
+    const after = pages.filter((page) => page.shots.after.desktop).length;
+    return after === 0 ? 'Before screenshots are ready; after screenshots appear as pages finish.' : `${after} of ${pages.length} pages have after screenshots.`;
+  });
+
+  protected openCompare(page: PageRunState): void {
+    this.comparePage.set(page.pageId);
+    this.compareSection()?.nativeElement.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
+  }
 
   protected readonly activeIndex = computed(() => {
     const steps = this.run().steps;

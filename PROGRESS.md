@@ -8,8 +8,8 @@ Living status of the build. The plan and its reasoning are in [PLAN.md](PLAN.md)
 |---|---|
 | 1. Foundation | Done |
 | 2. Run engine | Done |
-| 3. Browser | Next |
-| 4. Claude Agent | Not started |
+| 3. Browser | Done |
+| 4. Claude Agent | Next |
 | 5. GitHub Copilot | Not started |
 | 6. Upgrade and design system | Not started |
 | 7. Polish loop and delivery | Not started |
@@ -130,6 +130,68 @@ What works:
 How to try it: `npm start`, add an app, fill in sample values, open **Modernize**, choose **Dry run**
 and **Start modernizing**. Switch between **Simple** and **Developer** while it runs.
 
+## Phase 3: Browser (done)
+
+What works:
+
+- **Dev server** (`browser/devserver.ts`):
+  - checks the port first; if it is taken, the error says how to find and stop the program
+    (netstat/taskkill on Windows, lsof/kill elsewhere)
+  - waits for webpack's or esbuild's "compiled" message
+  - counts rebuilds, so after screenshots wait for the new code
+  - kills the whole process tree when it stops
+- **Capture** (`browser/capture.ts`):
+  - waits for network idle (capped), for MSAL-style popups to close, then idle again
+  - turns off animations and the caret, then takes a full-page JPEG at quality 72 (capped at 9,000
+    px tall)
+  - desktop 1440×900 and mobile 390×844
+  - the desktop pass records XHR/fetch calls and console errors
+- **API comparison** (`browser/api-calls.ts`):
+  - each call becomes `METHOD host/path`, with numeric IDs, GUIDs and long hex IDs turned into
+    `:id` and query strings ignored
+  - static files, `/assets`, dev-server traffic, Microsoft sign-in hosts and common telemetry
+    (Application Insights, Google Analytics, Clarity, Sentry, Datadog) are skipped
+  - recordings are compared as sets, so polling differences don't count
+  - console errors are compared after removing URLs and line numbers
+- **Sign-in** (`browser/session.ts`):
+  - one persistent Chromium profile (`data/browser-profile`) with a lock: the sign-in window and
+    runs never use it at the same time, and each says why when blocked
+  - "Sign in once" opens a visible window and saves the cookies every 3 seconds, so closing the
+    window also keeps the session
+  - "I'm signed in" saves the session and closes the window
+  - headless runs restore the saved cookies, including session-only ones like Entra's `ESTSAUTH`
+  - if a page lands on a Microsoft sign-in host, it is marked "sign-in needed"; if that happens on
+    every page, the run stops and explains exactly what to do
+- **Pipeline:**
+  - Baseline takes the before screenshots and API recordings with its own dev server.
+  - Pages keeps one dev server running for all pages. Before each page, the before screenshots
+    are copied into `.refit/shots/` for the agent (and passed as images). After the build passes,
+    Refit waits for the rebuild, takes after screenshots and compares API calls. A change is
+    flagged, or rolled back if that is the run setting.
+  - Final checks re-capture every page on the final code, because a later page can change shared
+    code, and compare each page with its before recording.
+  - The report includes the API comparison. Base href and hash routing are respected.
+- **UI:**
+  - a "Before and after" stage on the blueprint grid: page selector, desktop/mobile toggle, and a
+    slider mode whose divider is a real slider (arrow keys, Shift for bigger steps, Page Up/Down,
+    Home/End, pointer drag)
+  - side-by-side mode
+  - page-card thumbnails open the comparison
+  - a Microsoft sign-in section in Settings with status, "Sign in once", "I'm signed in" and tips
+- **Fixture 3** (`ng-mock-sso`): an Angular app that signs in through a popup on another local
+  origin, like MSAL.
+- **Tests:**
+  - 224 unit tests
+  - integration:
+    - the full dry run now with screenshots and "API calls unchanged"
+    - browser tests against real Chromium (recording, a stuck sign-in popup, and "Sign in once"
+      reused headless with persistent and with session-only cookies)
+    - the fixture 3 run without and with a saved session
+  - end-to-end: the comparison slider operated with the keyboard
+
+How to try it: start Refit, run a Dry run on an app, and open **Before and after** in the Simple
+view. For apps with Microsoft sign-in, use **Settings → Microsoft sign-in → Sign in once** first.
+
 ## Decisions and differences from the spec
 
 1. **PrimeNG 21 and Angular 21, not the newest versions.** PrimeNG 22, `@primeuix/themes` 3 and
@@ -173,6 +235,14 @@ and **Start modernizing**. Switch between **Simple** and **Developer** while it 
     - A `meta` run event carries the branch and workspace.
 15. **Final build failure** marks the Final checks step failed, but the run still ends as "Ready for
     review" with the failure shown prominently, because the branch is still useful to a developer.
+16. **Sign-in cookies are saved to `data/browser-session.json`** (file mode 600). Chromium does not
+    keep session cookies in a profile once the window closes, and without them a later headless run
+    would land on the sign-in page.
+17. **Browser endpoints:** `GET /api/browser`, `POST /api/browser/sign-in` and
+    `POST /api/browser/sign-in/done`. `browser.channel` in the config can be `chromium` (default),
+    `msedge` or `chrome`.
+18. **Final checks re-capture every page.** The spec only asks for after screenshots per page; a
+    change on a later page can affect earlier ones through shared code.
 
 ## Notes for later phases
 

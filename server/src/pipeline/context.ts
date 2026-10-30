@@ -1,5 +1,7 @@
 import path from 'node:path';
-import type { AppRecord, LogLevel, LogSource, ModernizeStepId, PageConfig, RunEventBody, RunSettings, StepStatus } from '@refit/shared';
+import type { ApiDiff, AppRecord, LogLevel, LogSource, ModernizeStepId, PageConfig, RunEventBody, RunRecord, RunSettings, StepStatus } from '@refit/shared';
+import type { DevServer } from '../browser/devserver.js';
+import type { BrowserManager, CaptureSession } from '../browser/session.js';
 import type { RefitConfig } from '../config/config.js';
 import type { GuardPolicy } from '../guard/guard.js';
 import { childEnv } from '../proc/env.js';
@@ -35,9 +37,14 @@ export interface RunContext {
   /** The app's folder relative to the repo root ("" for the whole repo). */
   appDir: string;
   guardPolicy: GuardPolicy;
+  browser: BrowserManager;
+  /** Extra hosts that count as a sign-in page (tests use a mock identity provider). */
+  signInHosts?: readonly string[];
   /** Facts collected along the way, used by later steps and the report. */
   facts: RunFacts;
   emit(body: RunEventBody): void;
+  /** The run summary as the event reducer sees it right now. */
+  record(): RunRecord;
 }
 
 export interface RunFacts {
@@ -50,10 +57,27 @@ export interface RunFacts {
   protectedReverts: Array<{ file: string; reason: string; pageId?: string }>;
   sensitiveChanges: Set<string>;
   pageCommits: Map<string, string>;
+  /** API calls and console errors recorded with the before screenshots, per page. */
+  beforeApi: Map<string, string[]>;
+  beforeErrors: Map<string, string[]>;
+  /** Pages whose before screenshots could not be taken because sign-in was needed. */
+  signInPages: Set<string>;
+  /** Final API comparison per page. */
+  apiDiffs: Map<string, ApiDiff>;
+  devServer?: DevServer;
+  capture?: CaptureSession;
 }
 
 export function newFacts(): RunFacts {
-  return { protectedReverts: [], sensitiveChanges: new Set(), pageCommits: new Map() };
+  return {
+    protectedReverts: [],
+    sensitiveChanges: new Set(),
+    pageCommits: new Map(),
+    beforeApi: new Map(),
+    beforeErrors: new Map(),
+    signInPages: new Set(),
+    apiDiffs: new Map(),
+  };
 }
 
 export function log(ctx: RunContext, level: LogLevel, source: LogSource, text: string): void {

@@ -122,6 +122,14 @@ export class Api {
     return this.request(this.http.delete<void>(`/api/runs/${runId}/workspace`));
   }
 
+  openSignIn(url?: string): Promise<void> {
+    return this.request(this.http.post<void>('/api/browser/sign-in', url ? { url } : {}));
+  }
+
+  finishSignIn(): Promise<{ lastSignInAt: string }> {
+    return this.request(this.http.post<{ lastSignInAt: string }>('/api/browser/sign-in/done', {}));
+  }
+
   removeRun(runId: string): Promise<void> {
     return this.request(this.http.delete<void>(`/api/runs/${runId}`));
   }

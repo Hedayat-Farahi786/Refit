@@ -2,6 +2,7 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import type { AppRecord, ChangedFile, RunEvent, RunEventBody, RunRecord, RunSettings } from '@refit/shared';
 import { applyRunEvent, MODERNIZE_STEPS, shortId } from '@refit/shared';
+import type { BrowserManager } from '../browser/session.js';
 import type { ServerContext } from '../context.js';
 import { classifyPath, type GuardPolicy } from '../guard/guard.js';
 import { changedSince, fileDiff } from '../git/workspace.js';
@@ -36,6 +37,9 @@ export class RunService {
     private readonly ctx: ServerContext,
     private readonly providers: ProviderRegistry,
     private readonly apps: AppService,
+    private readonly browser: BrowserManager,
+    /** Extra sign-in hosts for tests that use a mock identity provider. */
+    private readonly signInHosts?: readonly string[],
   ) {
     this.recoverInterrupted();
   }
@@ -54,6 +58,9 @@ export class RunService {
     if (this.active) {
       const busy = this.get(this.active.runId);
       throw new UserError(`Another run is in progress (${busy.appName}).`, 'Wait for it to finish or cancel it first. Refit runs one modernization at a time.', 409);
+    }
+    if (this.browser.signInOpen) {
+      throw new UserError('The sign-in window is open, and it shares the browser with runs.', 'Finish signing in (choose "I\'m signed in" in Settings) or close the window, then start the run.', 409);
     }
     const app = this.apps.get(appId);
     if (app.scanState.status === 'scanning') throw new UserError('The app is still being scanned.', 'Wait a few seconds and try again.', 409);
@@ -114,11 +121,14 @@ export class RunService {
       paths: { runDir, workspace, appFolder: appDir ? path.join(workspace, ...appDir.split('/')) : workspace },
       appDir,
       guardPolicy: policy,
+      browser: this.browser,
+      ...(this.signInHosts ? { signInHosts: this.signInHosts } : {}),
       facts: newFacts(),
       emit: (body) => this.record(runId, log, body),
+      record: () => this.get(runId),
     };
 
-    const done = runPipeline(runCtx, { record: () => this.get(runId), version: this.ctx.version })
+    const done = runPipeline(runCtx, { version: this.ctx.version })
       .catch((error: unknown) => console.error(`Refit: run ${runId} crashed:`, error))
       .finally(async () => {
         await log.close();

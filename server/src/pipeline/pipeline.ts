@@ -1,6 +1,7 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import type { ModernizeStepId, RunRecord, RunResult } from '@refit/shared';
+import { apiChanged } from '../browser/api-calls.js';
 import { commitAll } from '../git/workspace.js';
 import { buildReport } from '../report/report.js';
 import { errorMessage } from '../util/errors.js';
@@ -13,8 +14,6 @@ import { pagesStep } from './steps/pages.js';
 import { prepareStep } from './steps/prepare.js';
 
 export interface PipelineHooks {
-  /** The run summary as the event reducer sees it right now. */
-  record(): RunRecord;
   version: string;
 }
 
@@ -43,7 +42,7 @@ export async function runPipeline(ctx: RunContext, hooks: PipelineHooks): Promis
     await run('design-system', () => designSystemStep(ctx));
     await run('pages', async () => {
       const detail = await pagesStep(ctx);
-      const pages = hooks.record().pages;
+      const pages = ctx.record().pages;
       return { status: pages.some((page) => page.status === 'flagged' || page.status === 'skipped') ? 'warn' : 'done', detail };
     });
     await run('final', async () => {
@@ -59,7 +58,7 @@ export async function runPipeline(ctx: RunContext, hooks: PipelineHooks): Promis
   } catch (error) {
     const cancelled = error instanceof CancelledError || ctx.signal.aborted;
     if (current) step(ctx, current, cancelled ? 'skipped' : 'failed', cancelled ? 'Cancelled' : errorMessage(error));
-    skipRemaining(ctx, hooks.record(), cancelled ? 'Cancelled' : 'Not started: the run stopped');
+    skipRemaining(ctx, ctx.record(), cancelled ? 'Cancelled' : 'Not started: the run stopped');
     if (cancelled) {
       log(ctx, 'warn', 'refit', 'The run was cancelled. The branch and workspace are kept so you can look at them.');
       ctx.emit({ type: 'status', status: 'cancelled', message: 'Cancelled. The branch and workspace are kept.' });
@@ -70,8 +69,17 @@ export async function runPipeline(ctx: RunContext, hooks: PipelineHooks): Promis
       ctx.emit({ type: 'status', status: 'failed', message: `${errorMessage(error)}${fix ? ` ${fix}` : ''}` });
     }
   } finally {
+    await releaseResources(ctx);
     await finish(ctx, hooks, Date.now() - started);
   }
+}
+
+/** Stops the dev server and closes the browser, whatever happened. */
+async function releaseResources(ctx: RunContext): Promise<void> {
+  await ctx.facts.devServer?.stop().catch(() => undefined);
+  ctx.facts.devServer = undefined;
+  await ctx.facts.capture?.release().catch(() => undefined);
+  ctx.facts.capture = undefined;
 }
 
 function skipRemaining(ctx: RunContext, record: RunRecord, note: string): void {
@@ -86,14 +94,14 @@ function skipRemaining(ctx: RunContext, record: RunRecord, note: string): void {
 }
 
 async function finish(ctx: RunContext, hooks: PipelineHooks, durationMs: number): Promise<void> {
-  const record = hooks.record();
+  const record = ctx.record();
   const result: RunResult = {
     pagesDone: record.pages.filter((page) => page.status === 'done').length,
     pagesFlagged: record.pages.filter((page) => page.status === 'flagged').length,
     pagesSkipped: record.pages.filter((page) => page.status === 'skipped' || page.status === 'queued').length,
     build: ctx.facts.finalBuild ?? 'not-run',
     tests: ctx.facts.finalTests ?? (ctx.facts.baselineTests === 'failed' ? 'failed' : 'not-run'),
-    apiUnchanged: null,
+    apiUnchanged: ctx.facts.apiDiffs.size === 0 ? null : [...ctx.facts.apiDiffs.values()].every((diff) => !apiChanged(diff)),
     protectedReverts: ctx.facts.protectedReverts.length,
     sensitiveChanges: [...ctx.facts.sensitiveChanges].sort(),
     costUsd: ctx.budget.totalUsd,

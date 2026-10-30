@@ -3,6 +3,7 @@ import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { RunEvent } from '@refit/shared';
 import { createProviderRegistry } from '../../src/providers/registry.js';
+import { startMockApi, type MockServer } from '../helpers/mock-servers.js';
 import { gitIn, fixtureRepo } from '../helpers/repos.js';
 import { startTestServer, type TestServer } from '../helpers/server.js';
 
@@ -11,9 +12,11 @@ import { startTestServer, type TestServer } from '../helpers/server.js';
  * guard, rollback, commits and report. Needs network access for npm ci the first time.
  */
 let server: TestServer;
+let api: MockServer;
 let appId: string;
 
 beforeAll(async () => {
+  api = await startMockApi();
   server = await startTestServer({
     providers: createProviderRegistry({}, {
       delayMs: 5,
@@ -30,6 +33,7 @@ beforeAll(async () => {
 
 afterAll(async () => {
   await server.app.close();
+  await api.close();
 });
 
 describe('dry run on ng-modern-bootstrap', () => {
@@ -61,6 +65,21 @@ describe('dry run on ng-modern-bootstrap', () => {
     expect(run.branch).toMatch(/^refit\/modernize-\d{8}-[a-z0-9]{8}$/);
     expect(run.result).toMatchObject({ pagesDone: 3, pagesFlagged: 1, pagesSkipped: 0, build: 'passed', costUsd: 0 });
     expect(run.result?.protectedReverts).toBeGreaterThanOrEqual(3);
+
+    // Screenshots before and after, desktop and mobile, and an unchanged API on every page.
+    for (const page of run.pages) {
+      expect(page.shots.before.desktop, page.name).toMatch(new RegExp(`^/files/runs/${run.id}/shots/${page.pageId}-before-desktop\\.jpg`));
+      expect(page.shots.before.mobile, page.name).toBeTruthy();
+      expect(page.shots.after.desktop, page.name).toBeTruthy();
+      expect(page.apiDiff, page.name).toMatchObject({ added: [], removed: [] });
+    }
+    expect(run.pages.find((page) => page.name === 'Requests')?.apiDiff?.unchanged).toBeGreaterThan(0);
+    expect(run.result?.apiUnchanged).toBe(true);
+    const shotFile = path.join(server.ctx.paths.runs, run.id, 'shots', 'home-before-desktop.jpg');
+    expect((await fs.stat(shotFile)).size).toBeGreaterThan(5000);
+    const served = await server.app.inject({ method: 'GET', url: `/files/runs/${run.id}/shots/home-before-desktop.jpg`, headers: { host: 'localhost:4700' } });
+    expect(served.statusCode).toBe(200);
+    expect(served.headers['content-type']).toBe('image/jpeg');
 
     // The branch has one commit per modernized page and never touches the protected service.
     const workspace = run.workspace!;

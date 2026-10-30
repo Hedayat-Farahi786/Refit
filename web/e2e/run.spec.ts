@@ -43,6 +43,24 @@ test('starts a dry run and follows it to the end in simple and developer view', 
   await page.getByRole('button', { name: 'Simple' }).click();
   await expect(page.getByText('4 of 4 done')).toBeVisible();
 
+  // The before/after comparison: the divider is a slider that works with the keyboard.
+  await expect(page.getByRole('heading', { name: 'Before and after' })).toBeVisible();
+  const stage = page.locator('app-compare-stage');
+  await expect(stage.getByRole('img', { name: 'Before: Dashboard' })).toBeVisible();
+  const divider = page.getByRole('slider', { name: 'Move the divider between before and after' });
+  await expect(divider).toHaveAttribute('aria-valuenow', '50');
+  await divider.focus();
+  await page.keyboard.press('ArrowLeft');
+  await expect(divider).toHaveAttribute('aria-valuenow', '48');
+  await page.keyboard.press('Shift+ArrowRight');
+  await expect(divider).toHaveAttribute('aria-valuenow', '58');
+  await page.keyboard.press('End');
+  await expect(divider).toHaveAttribute('aria-valuenow', '100');
+  await page.getByRole('button', { name: 'Compare before and after for Requests' }).click();
+  await expect(stage.getByRole('img', { name: 'After: Requests' })).toBeVisible();
+  await page.getByRole('button', { name: 'Side by side' }).click();
+  await expect(stage.getByRole('img', { name: 'Before: Requests' })).toBeVisible();
+
   await page.getByRole('link', { name: 'History' }).click();
   await expect(page.getByRole('cell').getByText('Ready for review')).toBeVisible();
 });

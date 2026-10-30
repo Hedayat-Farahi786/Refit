@@ -35,6 +35,8 @@ export function applyRunEvent(run: RunRecord, event: RunEvent | (RunEventBody & 
       page.status = event.status;
       if (event.note !== undefined) page.note = event.note;
       if (event.report !== undefined) page.report = event.report;
+      if (event.apiDiff !== undefined) page.apiDiff = event.apiDiff;
+      if (event.newConsoleErrors !== undefined) page.newConsoleErrors = event.newConsoleErrors;
       break;
     }
     case 'shot': {

@@ -24,6 +24,8 @@ export interface AngularWorkspace {
   styles: string[];
   buildBuilder: string | null;
   testBuilder: string | null;
+  /** The configured base href (angular.json baseHref or <base href> in index.html). */
+  baseHref: string | null;
   /** Workspace file format: angular.json, the pre-6 .angular-cli.json, or an Nx project.json. */
   format: 'angular.json' | 'angular-cli-legacy' | 'nx' | 'none';
 }
@@ -38,6 +40,7 @@ export async function readAngularWorkspace(repo: RepoContext): Promise<AngularWo
     styles: [],
     buildBuilder: null,
     testBuilder: null,
+    baseHref: null,
     format: 'none',
   };
   if (!repo.hasFile('angular.json')) {
@@ -64,6 +67,8 @@ export async function readAngularWorkspace(repo: RepoContext): Promise<AngularWo
     .map((entry: unknown) => (typeof entry === 'string' ? entry : asString((entry as { input?: unknown })?.input)))
     .filter((entry): entry is string => Boolean(entry));
   const test = targets['test'];
+  const indexText = index ? await repo.readText(index) : null;
+  const baseHref = asString(options['baseHref']) ?? /<base\s+href=["']([^"']+)["']/i.exec(indexText ?? '')?.[1] ?? null;
   return {
     project: name,
     projectCount: projects.length,
@@ -73,6 +78,7 @@ export async function readAngularWorkspace(repo: RepoContext): Promise<AngularWo
     styles,
     buildBuilder: build?.builder ?? null,
     testBuilder: test?.builder ?? null,
+    baseHref: baseHref && baseHref !== '/' ? baseHref : null,
     format: 'angular.json',
   };
 }

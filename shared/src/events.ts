@@ -1,5 +1,6 @@
 /** Live run events, streamed over SSE and stored as JSON lines in data/runs/<runId>/events.jsonl. */
 import type {
+  ApiDiff,
   ChangedFile,
   PageReport,
   PageStatus,
@@ -20,7 +21,17 @@ export type RunEventBody =
   | { type: 'activity'; text: string }
   | { type: 'log'; level: LogLevel; source: LogSource; text: string; exitCode?: number }
   | { type: 'agent'; kind: 'thought' | 'tool'; text?: string; tool?: string; target?: string; task?: string }
-  | { type: 'page'; pageId: string; status: PageStatus; note?: string; report?: PageReport }
+  | {
+      type: 'page';
+      pageId: string;
+      status: PageStatus;
+      note?: string;
+      report?: PageReport;
+      /** API calls compared with the before screenshots. */
+      apiDiff?: ApiDiff;
+      /** Console errors that were not there before. */
+      newConsoleErrors?: string[];
+    }
   | { type: 'shot'; pageId: string; phase: ShotPhase; viewport: Viewport; url: string }
   | { type: 'files'; changed: ChangedFile[]; pageId?: string }
   | { type: 'cost'; usd: number; requests: number }

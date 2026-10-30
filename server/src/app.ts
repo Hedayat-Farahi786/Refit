@@ -3,11 +3,13 @@ import path from 'node:path';
 import fastifyStatic from '@fastify/static';
 import Fastify, { type FastifyInstance } from 'fastify';
 import type { ApiError } from '@refit/shared';
+import { BrowserManager } from './browser/session.js';
 import type { ServerContext } from './context.js';
 import { registerLocalOnlyGuard } from './http/security.js';
 import { createProviderRegistry } from './providers/registry.js';
 import type { ProviderRegistry } from './providers/types.js';
 import { registerAppRoutes } from './routes/apps.js';
+import { registerBrowserRoutes } from './routes/browser.js';
 import { registerRunRoutes } from './routes/runs.js';
 import { registerSettingsRoutes } from './routes/settings.js';
 import { AppService } from './services/apps.js';
@@ -19,11 +21,14 @@ export interface Services {
   apps: AppService;
   runs: RunService;
   providers: ProviderRegistry;
+  browser: BrowserManager;
 }
 
 export interface ServerOptions {
   /** Replaces the provider registry (tests use a fast dry run). */
   providers?: ProviderRegistry;
+  /** Extra hosts that count as a sign-in page (tests use a mock identity provider). */
+  signInHosts?: readonly string[];
 }
 
 export const DEV_WEB_PORT = 4701;
@@ -54,11 +59,24 @@ export async function createServer(ctx: ServerContext, options: ServerOptions = 
 
   const apps = new AppService(ctx);
   const providers = options.providers ?? createProviderRegistry({});
-  const runs = new RunService(ctx, providers, apps);
-  const services: Services = { apps, runs, providers };
+  const browser = new BrowserManager(path.join(ctx.paths.data, 'browser-profile'), path.join(ctx.paths.data, 'browser-session.json'), ctx.getConfig, (status, message) => {
+    ctx.bus.emit({ type: 'sign-in', status, ...(message ? { message } : {}) });
+    if (status === 'saved' || status === 'closed') {
+      void browser.lastSavedAt().then((savedAt) => {
+        if (savedAt) ctx.store.update((state) => (state.settings.lastSignInAt = savedAt));
+        ctx.bus.changed('sign-in');
+      });
+    } else {
+      ctx.bus.changed('sign-in');
+    }
+  });
+  const runs = new RunService(ctx, providers, apps, browser, options.signInHosts);
+  const services: Services = { apps, runs, providers, browser };
+  app.addHook('onClose', async () => browser.shutdown());
 
   app.get('/api/health', async () => ({ ok: true, version: ctx.version }));
-  registerSettingsRoutes(app, ctx, () => runs.activeRunId());
+  registerSettingsRoutes(app, ctx, { activeRunId: () => runs.activeRunId(), signInOpen: () => browser.signInOpen });
+  registerBrowserRoutes(app, browser, () => runs.activeRunId() !== null);
   registerAppRoutes(app, services.apps, config.port);
   registerRunRoutes(app, runs, providers);
 
