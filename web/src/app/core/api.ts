@@ -98,6 +98,10 @@ export class Api {
     return this.request(this.http.post<RunRecord>(`/api/apps/${appId}/runs`, settings));
   }
 
+  startReview(appId: string, provider: string): Promise<RunRecord> {
+    return this.request(this.http.post<RunRecord>(`/api/apps/${appId}/review`, { provider }));
+  }
+
   run(runId: string): Promise<RunRecord> {
     return this.request(this.http.get<RunRecord>(`/api/runs/${runId}`));
   }

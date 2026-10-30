@@ -1,7 +1,9 @@
-import { Component, inject } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { Button } from 'primeng/button';
+import type { ProviderStatus } from '@refit/shared';
 import { Tooltip } from 'primeng/tooltip';
+import { Api } from '../core/api';
 import { Theme } from '../core/theme';
 
 @Component({
@@ -23,6 +25,13 @@ import { Theme } from '../core/theme';
         <a routerLink="/settings" routerLinkActive="active" ariaCurrentWhenActive="page">Settings</a>
       </nav>
       <span class="spacer"></span>
+      @if (providers()) {
+        <a class="ai" routerLink="/settings" [class.none]="ready().length === 0" [pTooltip]="aiTooltip()" tooltipPosition="bottom">
+          <span class="dot" aria-hidden="true"></span>
+          <span class="ai-label">{{ ready().length ? ready().join(' · ') : 'No AI provider set up' }}</span>
+          <span class="sr-only">. Open settings to manage AI providers.</span>
+        </a>
+      }
       <p-button
         [icon]="theme.dark() ? 'pi pi-sun' : 'pi pi-moon'"
         [text]="true"
@@ -85,6 +94,38 @@ import { Theme } from '../core/theme';
       background: var(--refit-accent-soft);
       color: var(--refit-accent-text);
     }
+    .ai {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 4px 10px;
+      border: 1px solid var(--refit-border);
+      border-radius: 999px;
+      color: var(--refit-text-soft);
+      font-size: 0.8rem;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+    .ai:hover {
+      background: var(--refit-hover);
+    }
+    .dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--refit-success);
+    }
+    .ai.none .dot {
+      background: var(--refit-warn);
+    }
+    @media (max-width: 720px) {
+      .ai-label {
+        display: none;
+      }
+      .ai {
+        padding: 8px;
+      }
+    }
     @media (max-width: 560px) {
       .bar {
         gap: 12px;
@@ -98,4 +139,18 @@ import { Theme } from '../core/theme';
 })
 export class TopBar {
   protected readonly theme = inject(Theme);
+  private readonly api = inject(Api);
+  protected readonly providers = signal<ProviderStatus[] | null>(null);
+  /** Real AI providers that are ready (the dry run is always there and does not count). */
+  protected readonly ready = computed(() => (this.providers() ?? []).filter((provider) => provider.available && provider.id !== 'dryrun').map((provider) => provider.label));
+  protected readonly aiTooltip = computed(() =>
+    this.ready().length ? 'AI providers that are ready. Manage them in Settings.' : 'Only the dry run works until an AI provider is set up. See Settings.',
+  );
+
+  constructor() {
+    this.api.providers().then(
+      (list) => this.providers.set(list),
+      () => this.providers.set(null),
+    );
+  }
 }

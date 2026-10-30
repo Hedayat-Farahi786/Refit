@@ -1,6 +1,6 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
-import type { AppRecord, ChangedFile, RunEvent, RunEventBody, RunRecord, RunSettings } from '@refit/shared';
+import type { AppRecord, ChangedFile, ProviderId, RunEvent, RunEventBody, RunRecord, RunSettings } from '@refit/shared';
 import { applyRunEvent, MODERNIZE_STEPS, shortId } from '@refit/shared';
 import type { BrowserManager } from '../browser/session.js';
 import type { ServerContext } from '../context.js';
@@ -10,6 +10,7 @@ import { BudgetLedger } from '../pipeline/budget.js';
 import { effectiveCommands } from '../pipeline/commands.js';
 import { appEnv, newFacts, type RunContext } from '../pipeline/context.js';
 import { runPipeline } from '../pipeline/pipeline.js';
+import { runReview } from '../pipeline/review.js';
 import { loadPlaybook } from '../prompts/playbook.js';
 import type { ProviderRegistry } from '../providers/types.js';
 import { RunEventLog } from '../runs/event-log.js';
@@ -30,6 +31,8 @@ const KEEP_LOGS = 4;
 /** Starts, tracks and cancels runs. One modernize run at a time. */
 export class RunService {
   private active: ActiveRun | null = null;
+  /** Agent reviews in progress, by run id (one per app; they can run next to a modernize run). */
+  private readonly reviews = new Map<string, ActiveRun & { appId: string }>();
   /** Event logs of recent runs, newest last, for fast replays. */
   private readonly logs = new Map<string, RunEventLog>();
 
@@ -142,15 +145,74 @@ export class RunService {
 
   cancel(runId: string): void {
     const run = this.get(runId);
-    if (this.active?.runId !== runId || run.status !== 'running') {
+    const live = this.active?.runId === runId ? this.active : this.reviews.get(runId);
+    if (!live || run.status !== 'running') {
       throw new UserError('This run is not running.', 'Nothing to cancel.', 409);
     }
-    this.active.controller.abort();
+    live.controller.abort();
   }
 
   /** Resolves when the given run (if active) has finished. */
   async waitFor(runId: string): Promise<void> {
     if (this.active?.runId === runId) await this.active.done;
+    await this.reviews.get(runId)?.done;
+  }
+
+  /** Starts a read-only agent review of the app's last scan. */
+  async startReview(appId: string, providerId: ProviderId): Promise<RunRecord> {
+    const app = this.apps.get(appId);
+    if (!app.scan) throw new UserError('Scan the app before reviewing it.', 'Open the Overview tab and choose Scan again.');
+    if ([...this.reviews.values()].some((review) => review.appId === appId)) {
+      throw new UserError('A review of this app is already running.', 'Wait for it to finish.', 409);
+    }
+    const folder = path.join(this.ctx.paths.sources, app.id, ...(app.scan.appDir ? app.scan.appDir.split('/') : []));
+    if (!(await isDirectory(folder))) throw new UserError('The scanned copy of the app is missing.', 'Scan the app again, then start the review.');
+    const provider = await this.providers.get(providerId);
+    const playbook = await loadPlaybook(this.ctx.paths.playbook);
+    const runId = shortId();
+    const record: RunRecord = {
+      id: runId,
+      appId: app.id,
+      appName: app.name,
+      kind: 'review',
+      status: 'running',
+      startedAt: new Date().toISOString(),
+      steps: [{ id: 'review', label: 'Agent review', status: 'pending' }],
+      pages: [],
+      cost: { usd: 0, requests: 0, unit: provider.costUnit },
+      activity: 'Starting the review',
+      lastSeq: 0,
+    };
+    this.ctx.store.update((state) => state.runs.push(record));
+    const log = await RunEventLog.create(path.join(this.ctx.paths.runs, runId));
+    this.remember(runId, log);
+    const controller = new AbortController();
+    const done = runReview({
+      runId,
+      app,
+      folder,
+      provider,
+      playbook,
+      config: this.ctx.getConfig(),
+      signal: controller.signal,
+      emit: (body) => this.record(runId, log, body),
+    })
+      .then((review) => {
+        if (!review) return;
+        this.ctx.store.update((state) => {
+          const target = state.apps.find((candidate) => candidate.id === appId);
+          if (target) target.review = review;
+        });
+      })
+      .catch((error: unknown) => console.error(`Refit: review ${runId} crashed:`, error))
+      .finally(async () => {
+        await log.close();
+        this.reviews.delete(runId);
+        this.ctx.bus.changed('review-finished', { runId, appId });
+      });
+    this.reviews.set(runId, { runId, controller, done, appId });
+    this.ctx.bus.changed('review-started', { runId, appId });
+    return this.get(runId);
   }
 
   async events(runId: string, afterSeq: number): Promise<RunEvent[]> {
@@ -163,7 +225,7 @@ export class RunService {
 
   /** Live events of the active run; null when the run is not running. */
   subscribe(runId: string, listener: (event: RunEvent) => void): (() => void) | null {
-    if (this.active?.runId !== runId) return null;
+    if (this.active?.runId !== runId && !this.reviews.has(runId)) return null;
     return this.logs.get(runId)?.subscribe(listener) ?? null;
   }
 
@@ -213,7 +275,7 @@ export class RunService {
   /** Deletes the run completely: workspace, screenshots, log and history entry. */
   async remove(runId: string): Promise<void> {
     const run = this.get(runId);
-    if (this.active?.runId === runId) throw new UserError('This run is still in progress.', 'Cancel it first.', 409);
+    if (this.active?.runId === runId || this.reviews.has(runId)) throw new UserError('This run is still in progress.', 'Cancel it first.', 409);
     if (run.workspace) await removeTree(run.workspace);
     await removeTree(path.join(this.ctx.paths.runs, runId));
     this.logs.delete(runId);
@@ -240,7 +302,7 @@ export class RunService {
     this.logs.set(runId, log);
     while (this.logs.size > KEEP_LOGS) {
       const oldest = this.logs.keys().next().value as string;
-      if (oldest === this.active?.runId) break;
+      if (oldest === this.active?.runId || this.reviews.has(oldest)) break;
       this.logs.delete(oldest);
     }
   }

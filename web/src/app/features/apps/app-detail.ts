@@ -52,6 +52,7 @@ import { ReadinessChip } from '../../ui/readiness-chip';
         </div>
         <nav class="tabs" aria-label="App sections">
           <a routerLink="overview" routerLinkActive="active" ariaCurrentWhenActive="page"><i class="pi pi-compass" aria-hidden="true"></i>Overview</a>
+          <a routerLink="review" routerLinkActive="active" ariaCurrentWhenActive="page"><i class="pi pi-search" aria-hidden="true"></i>Agent review</a>
           <a routerLink="modernize" routerLinkActive="active" ariaCurrentWhenActive="page">
             <i class="pi" [class]="running() ? 'pi-spin pi-spinner' : 'pi-sparkles'" aria-hidden="true"></i>Modernize
             @if (running()) {

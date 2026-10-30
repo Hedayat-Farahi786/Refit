@@ -29,6 +29,7 @@ export async function runAgentTask(ctx: RunContext, task: AgentTask, options: Ag
       prompt: options.prompt,
       mode: task.kind === 'review' ? 'read' : 'write',
       ...(model ? { model } : {}),
+      ...(ctx.provider.id === 'claude' ? { effort: ctx.config.claude.effort } : {}),
       ...(ctx.budget.unit === 'usd' ? { budgetUsd } : {}),
       maxTurns: ctx.config.maxTurns[task.kind],
       signal: ctx.signal,

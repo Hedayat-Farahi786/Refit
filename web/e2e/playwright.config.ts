@@ -28,7 +28,21 @@ export default defineConfig({
     url: `http://localhost:${port}/api/health`,
     reuseExistingServer: false,
     timeout: 240_000,
-    env: { REFIT_PORT: String(port), REFIT_DATA_DIR: dataDir, REFIT_WORKSPACES_DIR: path.join(dataDir, 'workspaces') },
+    env: {
+      REFIT_PORT: String(port),
+      REFIT_DATA_DIR: dataDir,
+      REFIT_WORKSPACES_DIR: path.join(dataDir, 'workspaces'),
+      // Never real AI in end-to-end tests. Empty values also win over a developer's .env,
+      // because loading .env does not replace variables that are already set.
+      ANTHROPIC_API_KEY: '',
+      ANTHROPIC_AUTH_TOKEN: '',
+      CLAUDE_CODE_USE_BEDROCK: '',
+      CLAUDE_CODE_USE_VERTEX: '',
+      CLAUDE_CODE_USE_FOUNDRY: '',
+      COPILOT_GITHUB_TOKEN: '',
+      GH_TOKEN: '',
+      GITHUB_TOKEN: '',
+    },
     stdout: 'pipe',
   },
 });

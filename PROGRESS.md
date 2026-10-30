@@ -9,8 +9,8 @@ Living status of the build. The plan and its reasoning are in [PLAN.md](PLAN.md)
 | 1. Foundation | Done |
 | 2. Run engine | Done |
 | 3. Browser | Done |
-| 4. Claude Agent | Next |
-| 5. GitHub Copilot | Not started |
+| 4. Claude Agent | Done |
+| 5. GitHub Copilot | Next |
 | 6. Upgrade and design system | Not started |
 | 7. Polish loop and delivery | Not started |
 | 8. Finish | Not started |
@@ -192,6 +192,67 @@ What works:
 How to try it: start Refit, run a Dry run on an app, and open **Before and after** in the Simple
 view. For apps with Microsoft sign-in, use **Settings → Microsoft sign-in → Sign in once** first.
 
+## Phase 4: Claude Agent (done)
+
+What works:
+
+- **Claude Agent provider** (`providers/claude.ts`), on the Anthropic Claude Agent SDK:
+  - streams the agent's thoughts and tool actions into the run log, and reads cost and the final
+    text from the result
+  - budget (`maxBudgetUsd`) and turn (`maxTurns`) caps per task; hitting one is reported as a limit,
+    not a crash, and the last text is kept
+  - model per task kind from Settings, the stronger model for pages the review rated "high", and
+    the effort level
+  - cancel aborts the SDK query
+  - errors in plain words: rejected key, no credit, rate limit, network or proxy
+- **Safety** (`providers/tool-policy.ts`):
+  - only the task's tools exist: Read, Glob and Grep for reviews, plus Edit, Write and Bash for
+    page work; web, subagents, notebooks and skills are disallowed
+  - every call, reads included, goes through a PreToolUse hook and `canUseTool`, both backed by
+    the same policy:
+    - reads stay inside the app folder
+    - writes may not touch protected globs, files outside the app folder, or code that calls the
+      backend
+    - Bash runs only the app's build, lint and test commands, one at a time, with no `;`, `&`,
+      `|`, `>` or `$( )`
+  - every block is logged as a guard line, with a reason the model can act on
+  - nothing from disk is loaded (`settingSources: []`), so a target repo's `.claude/settings.json`,
+    hooks or CLAUDE.md cannot widen permissions
+  - the agent's config folder is `data/claude-config`, never `~/.claude`, and
+    `CLAUDE_CODE_OAUTH_TOKEN` is removed from its environment: Refit never uses a claude.ai login
+- **Credentials:** `ANTHROPIC_API_KEY`, Amazon Bedrock, Google Vertex AI, Microsoft Foundry, or a
+  company gateway (`ANTHROPIC_BASE_URL` plus `ANTHROPIC_AUTH_TOKEN`), all from `.env`.
+- **Agent review** (`pipeline/review.ts`):
+  - a read-only run of kind `review` on the scan snapshot, with its own budget and turn limit
+  - it starts from the app shell, global styles and a sample of page templates
+  - it returns a summary, UI stack, layout, shared components to modernize first, risks, pages with
+    complexity and recommendations
+  - the result is stored on the app; its page ratings choose the stronger model in later runs
+  - `POST /api/apps/:id/review`; it streams over the same SSE events as a modernize run and can be
+    cancelled
+- **UI:**
+  - an **Agent review** tab: reviewer choice (only providers that are ready, with a link to set
+    up the rest), the maximum cost, a live feed of what the agent reads, and result cards
+  - an **AI providers** panel in Settings: each provider's checks, cost unit and setup steps, with
+    "Check again"
+  - a top-bar indicator of the ready AI providers
+- **Fixes:**
+  - The UI now refreshes when its change stream (re)connects. A scan that finished between the
+    first state load and the connection used to stay "Scanning" until the next change.
+  - The SelectButton labels now reach screen readers. `ariaLabel` is not an input of PrimeNG's
+    SelectButton.
+- **Tests:**
+  - 235 unit tests: the tool policy, and the provider against scripted SDK message streams
+    (hook and `canUseTool` denials, limits, errors, credentials)
+  - integration: a dry-run review through the HTTP API
+  - end-to-end: the providers panel and a dry-run review with its result cards
+  - No test calls a real AI API. The e2e server blanks every AI credential, so a developer's
+    `.env` cannot leak into the tests.
+
+How to try it: put `ANTHROPIC_API_KEY=...` in `.env`, restart Refit, and check **Settings → AI
+providers**. Then open an app's **Agent review** tab and start a review (at most
+`budget.reviewUsd`, $0.60 by default). Then run **Modernize** with Claude Agent.
+
 ## Decisions and differences from the spec
 
 1. **PrimeNG 21 and Angular 21, not the newest versions.** PrimeNG 22, `@primeuix/themes` 3 and
@@ -243,6 +304,18 @@ view. For apps with Microsoft sign-in, use **Settings → Microsoft sign-in → 
     `msedge` or `chrome`.
 18. **Final checks re-capture every page.** The spec only asks for after screenshots per page; a
     change on a later page can affect earlier ones through shared code.
+19. **Claude Agent runs in `permissionMode: 'default'` with no `allowedTools`.** `acceptEdits` would
+    auto-approve file-system commands like `rm` and `mv`, and `allowedTools` would skip
+    `canUseTool`. With neither, each call passes Refit's policy twice (the hook, then
+    `canUseTool`).
+20. **Screenshots reach Claude as file paths.** The page prompt lists the before screenshots in
+    `.refit/shots/` and the agent opens them with Read, which shows images. The SDK's
+    string prompt has no attachments.
+21. **Company LLM gateways count as credentials** (`ANTHROPIC_BASE_URL` with `ANTHROPIC_AUTH_TOKEN`).
+    Like an API key, this is not a claude.ai login.
+22. **An agent review is a run of kind `review`.** It gets the same history, live events and cancel as
+    a modernize run, and can run while a modernize run is active, because it only reads the scan
+    snapshot.
 
 ## Notes for later phases
 

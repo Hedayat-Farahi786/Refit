@@ -45,7 +45,7 @@ const TOOL_ICONS: Record<string, string> = {
       <section class="panel log-panel" aria-labelledby="log-title">
         <div class="toolbar">
           <h2 id="log-title" class="sr-only">Log</h2>
-          <p-selectbutton [options]="filters" optionLabel="label" optionValue="value" [ngModel]="filter()" (ngModelChange)="filter.set($event)" [allowEmpty]="false" size="small" ariaLabel="Show" />
+          <p-selectbutton [options]="filters" optionLabel="label" optionValue="value" [ngModel]="filter()" (ngModelChange)="filter.set($event)" [allowEmpty]="false" size="small" aria-label="Show" />
           <p-iconfield class="search">
             <p-inputicon class="pi pi-search" />
             <input pInputText pSize="small" type="search" placeholder="Search the log" aria-label="Search the log" [ngModel]="query()" (ngModelChange)="query.set($event)" />

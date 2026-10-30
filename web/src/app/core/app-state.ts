@@ -47,15 +47,15 @@ export class AppState {
     if (this.events) return;
     const source = new EventSource('/api/events');
     this.events = source;
-    source.onopen = () => {
-      if (!this.connectedSignal()) this.scheduleRefresh(0);
-      this.connectedSignal.set(true);
-    };
+    source.onopen = () => this.connectedSignal.set(true);
     source.onerror = () => this.connectedSignal.set(false);
     source.onmessage = (message: MessageEvent<string>) => {
       const event = JSON.parse(message.data) as StateEvent;
       for (const listener of this.listeners) listener(event);
-      if ((event.type === 'state-changed' && event.reason !== 'connected') || event.type === 'sign-in') this.scheduleRefresh(60);
+      // "connected" comes on every (re)connect. Changes made before the stream opened (a scan
+      // that finished between the first load and the connection) would be missed otherwise.
+      if (event.type === 'state-changed' && event.reason === 'connected') this.scheduleRefresh(0);
+      else if (event.type === 'state-changed' || event.type === 'sign-in') this.scheduleRefresh(60);
     };
   }
 

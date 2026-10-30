@@ -28,6 +28,11 @@ export function registerRunRoutes(app: FastifyInstance, runs: RunService, provid
 
   app.get<{ Params: { id: string } }>('/api/runs/:id', async (request) => runs.get(request.params.id));
 
+  app.post<{ Params: { id: string } }>('/api/apps/:id/review', async (request, reply) => {
+    const body = parseBody(z.object({ provider: z.enum(['claude', 'copilot', 'dryrun']) }), request.body);
+    return reply.code(201).send(await runs.startReview(request.params.id, body.provider));
+  });
+
   app.post<{ Params: { id: string } }>('/api/runs/:id/cancel', async (request, reply) => {
     runs.cancel(request.params.id);
     return reply.code(202).send({ ok: true });

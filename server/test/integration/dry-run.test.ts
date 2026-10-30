@@ -135,4 +135,29 @@ describe('dry run on ng-modern-bootstrap', () => {
     server.services.runs.cancel(started.id);
     await server.services.runs.waitFor(started.id);
   });
+
+  it('runs a read-only agent review and stores it on the app', async () => {
+    const response = await server.app.inject({
+      method: 'POST',
+      url: `/api/apps/${appId}/review`,
+      headers: { host: 'localhost:4700', origin: 'http://localhost:4700' },
+      payload: { provider: 'dryrun' },
+    });
+    expect(response.statusCode, response.body).toBe(201);
+    const started = response.json<{ id: string; kind: string }>();
+    expect(started.kind).toBe('review');
+    await server.services.runs.waitFor(started.id);
+
+    const run = server.services.runs.get(started.id);
+    expect(run.status, run.message).toBe('done');
+    expect(run.steps).toEqual([expect.objectContaining({ id: 'review', status: 'done' })]);
+    const review = server.services.apps.get(appId).review;
+    expect(review).toMatchObject({ runId: started.id, provider: 'dryrun', structured: true, costUsd: 0 });
+    expect(review?.pages.length).toBeGreaterThan(0);
+    const events: RunEvent[] = await server.services.runs.events(run.id, 0);
+    expect(events.some((event) => event.type === 'agent' && event.kind === 'tool')).toBe(true);
+    // Read-only: the review never makes a workspace or a branch.
+    expect(run.workspace).toBeUndefined();
+    expect(run.branch).toBeUndefined();
+  });
 });

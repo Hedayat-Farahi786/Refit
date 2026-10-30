@@ -14,10 +14,11 @@ import { AppState } from '../../core/app-state';
 import { relativeTime } from '../../core/format';
 import { Notify } from '../../core/notify';
 import { Theme, type ThemeMode } from '../../core/theme';
+import { ProvidersPanel } from './providers-panel';
 
 @Component({
   selector: 'app-settings-page',
-  imports: [FormsModule, Button, InputNumber, InputText, Select, SelectButton, Textarea, ToggleSwitch],
+  imports: [FormsModule, Button, InputNumber, InputText, Select, SelectButton, Textarea, ToggleSwitch, ProvidersPanel],
   template: `
     <div class="page">
       <header class="page-head">
@@ -39,6 +40,8 @@ import { Theme, type ThemeMode } from '../../core/theme';
           </div>
         </div>
       </section>
+
+      <app-providers-panel />
 
       <section class="panel" aria-labelledby="signin-title">
         <div class="panel-header">

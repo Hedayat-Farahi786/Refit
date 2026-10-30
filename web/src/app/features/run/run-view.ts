@@ -38,7 +38,7 @@ const MODE_KEY = 'refit.runMode';
           <span class="soft small">{{ run.settings?.provider === 'dryrun' ? 'Dry run' : providerLabel() }}</span>
         </div>
         <div class="cluster">
-          <p-selectbutton [options]="modes" optionLabel="label" optionValue="value" [ngModel]="mode()" (ngModelChange)="setMode($event)" [allowEmpty]="false" ariaLabel="View" />
+          <p-selectbutton [options]="modes" optionLabel="label" optionValue="value" [ngModel]="mode()" (ngModelChange)="setMode($event)" [allowEmpty]="false" aria-label="View" />
           @if (run.status === 'running') {
             <p-button label="Cancel run" icon="pi pi-stop-circle" severity="danger" [outlined]="true" size="small" [loading]="cancelling()" (onClick)="cancel()" />
           } @else if (canStartNew()) {

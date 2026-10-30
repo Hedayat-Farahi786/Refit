@@ -6,6 +6,7 @@ import type { ApiError } from '@refit/shared';
 import { BrowserManager } from './browser/session.js';
 import type { ServerContext } from './context.js';
 import { registerLocalOnlyGuard } from './http/security.js';
+import { claudeModule } from './providers/claude.js';
 import { createProviderRegistry } from './providers/registry.js';
 import type { ProviderRegistry } from './providers/types.js';
 import { registerAppRoutes } from './routes/apps.js';
@@ -58,7 +59,7 @@ export async function createServer(ctx: ServerContext, options: ServerOptions = 
   });
 
   const apps = new AppService(ctx);
-  const providers = options.providers ?? createProviderRegistry({});
+  const providers = options.providers ?? createProviderRegistry({ claude: claudeModule({ version: ctx.version, effort: config.claude.effort, configDir: path.join(ctx.paths.data, 'claude-config') }) });
   const browser = new BrowserManager(path.join(ctx.paths.data, 'browser-profile'), path.join(ctx.paths.data, 'browser-session.json'), ctx.getConfig, (status, message) => {
     ctx.bus.emit({ type: 'sign-in', status, ...(message ? { message } : {}) });
     if (status === 'saved' || status === 'closed') {

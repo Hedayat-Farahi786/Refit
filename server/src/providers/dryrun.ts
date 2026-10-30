@@ -94,8 +94,9 @@ export class DryRunProvider implements AgentProvider {
       uiStack: ['Sample UI stack'],
       layout: 'Top navigation with a content area (sample).',
       sharedComponents: [{ name: 'App shell', files: args.task.files.slice(0, 1), why: 'Every page uses it (sample).' }],
-      risks: [],
-      pages: [],
+      risks: [{ title: 'Sample risk', files: [], detail: 'A real review lists what could break during the modernization (sample).' }],
+      // The routes from the prompt's page list, so every part of the review UI has data.
+      pages: [...args.prompt.matchAll(/^ {2}- (\/\S*)/gm)].slice(0, 20).map((match) => ({ route: match[1], purpose: 'Sample purpose (dry run)', complexity: 'low' })),
       recommendations: ['Run a real review with Claude Agent or GitHub Copilot for actual advice.'],
     };
     return { ok: true, text: `Here is the review.\n\n\`\`\`json\n${JSON.stringify(review, null, 2)}\n\`\`\``, costUsd: 0, requests: 0 };

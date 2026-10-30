@@ -25,6 +25,8 @@ export interface AgentRunArgs {
   prompt: string;
   mode: 'read' | 'write';
   model?: string;
+  /** How hard the model thinks (Claude: low, medium, high, xhigh, max). */
+  effort?: string;
   budgetUsd?: number;
   maxTurns?: number;
   signal: AbortSignal;
