@@ -1,7 +1,7 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import type { AppRecord, Brand, RunRecord, UiSettings } from '@refit/shared';
-import { validateBrand } from '@refit/shared';
+import { normalizeBrand, validateBrand } from '@refit/shared';
 import { readJsonIfExists, writeFileAtomic } from '../util/fs.js';
 
 export interface PersistedState {
@@ -51,15 +51,15 @@ export class StateStore {
       app.pages ??= [];
       app.overrides ??= {};
     }
-    if (this.state.brands.length === 0) {
-      this.state.brands = await loadStarterBrands(starterBrandsDir);
-    }
     // Before Refit had its own fixed look, this setting was "uiBrandId".
     const legacy = this.state.settings as { uiBrandId?: string };
     if (legacy.uiBrandId !== undefined) {
       this.state.settings.defaultBrandId ??= legacy.uiBrandId;
       delete legacy.uiBrandId;
     }
+    const starters = await loadStarterBrands(starterBrandsDir);
+    if (this.state.brands.length === 0) this.state.brands = starters;
+    this.state.brands = replaceUntouchedLegacyStarter(this.state.brands.map(normalizeBrand), starters, this.state.settings);
     if (!this.state.brands.some((brand) => brand.id === this.state.settings.defaultBrandId)) {
       this.state.settings.defaultBrandId = this.state.brands[0]?.id ?? '';
     }
@@ -107,6 +107,20 @@ export class StateStore {
   }
 }
 
+/**
+ * Refit used to ship a placeholder "Oerlikon (draft)" in blue. If it is still exactly as shipped,
+ * swap in the real Oerlikon brand; if someone edited it, keep their version.
+ */
+function replaceUntouchedLegacyStarter(brands: Brand[], starters: Brand[], settings: UiSettings): Brand[] {
+  const legacyIndex = brands.findIndex((brand) => brand.id === 'oerlikon-draft' && brand.name === 'Oerlikon (draft)' && brand.primary === '#1d4f91');
+  const replacement = starters.find((brand) => brand.id === 'oerlikon');
+  if (legacyIndex === -1 || !replacement || brands.some((brand) => brand.id === replacement.id)) return brands;
+  const next = [...brands];
+  next[legacyIndex] = replacement;
+  if (settings.defaultBrandId === 'oerlikon-draft') settings.defaultBrandId = replacement.id;
+  return next;
+}
+
 async function loadStarterBrands(dir: string): Promise<Brand[]> {
   let names: string[];
   try {
@@ -116,7 +130,8 @@ async function loadStarterBrands(dir: string): Promise<Brand[]> {
   }
   const brands: Brand[] = [];
   for (const name of names) {
-    const brand = await readJsonIfExists<Brand>(path.join(dir, name));
+    const raw = await readJsonIfExists<Brand>(path.join(dir, name));
+    const brand = raw ? normalizeBrand(raw) : null;
     if (brand && validateBrand(brand).length === 0) brands.push({ ...brand, updatedAt: new Date().toISOString() });
     else console.error(`Refit: skipped starter brand ${name} because it is not valid.`);
   }

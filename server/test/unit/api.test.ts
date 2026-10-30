@@ -53,7 +53,7 @@ describe('apps API', () => {
     const state = json as StateResponse;
     expect(status).toBe(200);
     expect(state.apps).toEqual([]);
-    expect(state.brands[0]?.id).toBe('oerlikon-draft');
+    expect(state.brands[0]?.id).toBe('oerlikon');
     expect(state.config.targetAngularMajor).toBe(21);
   });
 
@@ -116,6 +116,20 @@ describe('brands and settings API', () => {
     expect(settings.json).toMatchObject({ defaultBrandId: 'test-brand' });
     await server.call('DELETE', '/api/brands/test-brand');
     const state = (await server.call('GET', '/api/state')).json as StateResponse;
-    expect(state.settings.defaultBrandId).toBe('oerlikon-draft');
+    expect(state.settings.defaultBrandId).toBe('oerlikon');
+  });
+
+  it('creates brands with unique IDs from their names, for new brands, duplicates and imports', async () => {
+    const brand = { name: 'Oerlikon', status: 'draft', primary: '#eb0000', surface: 'neutral', fontFamily: 'Arial', radius: 4 };
+    const copy = await server.call('POST', '/api/brands', brand);
+    expect(copy.status).toBe(201);
+    expect(copy.json).toMatchObject({ id: 'oerlikon-2', name: 'Oerlikon', density: 'comfortable', colors: { success: '#15803d' } });
+    const named = await server.call('POST', '/api/brands', { ...brand, name: 'Metco Coatings & Co.' });
+    expect(named.json).toMatchObject({ id: 'metco-coatings-co' });
+    const bad = await server.call('POST', '/api/brands', { ...brand, colors: { danger: 'crimson' } });
+    expect(bad.status).toBe(400);
+    expect((bad.json as { error: string }).error).toMatch(/Danger color must be a hex color/);
+    await server.call('DELETE', '/api/brands/oerlikon-2');
+    await server.call('DELETE', '/api/brands/metco-coatings-co');
   });
 });

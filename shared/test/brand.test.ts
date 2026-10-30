@@ -13,20 +13,32 @@ import {
   rgbToOklch,
   SHADES,
   validateBrand,
+  brandGuide,
+  DEFAULT_STATUS_COLORS,
+  normalizeBrand,
+  primaryLooksLikeDanger,
   type Brand,
 } from '../src/index.js';
+import { readFileSync } from 'node:fs';
 
+/** A blue test brand (the old placeholder values). */
 const oerlikon: Brand = {
-  id: 'oerlikon-draft',
-  name: 'Oerlikon (draft)',
+  id: 'blue-test',
+  name: 'Blue test',
   status: 'draft',
   note: 'Placeholder values.',
   primary: '#1d4f91',
   surface: 'slate',
+  colors: { ...DEFAULT_STATUS_COLORS },
   fontFamily: "'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
+  headingFontFamily: '',
   fontImport: '',
   radius: 6,
+  density: 'comfortable',
 };
+
+/** The starter brand Refit ships. */
+const oerlikonRed = normalizeBrand(JSON.parse(readFileSync(new URL('../../brand/oerlikon.json', import.meta.url), 'utf8')) as Brand);
 
 describe('color math', () => {
   it('normalizes short and long hex values', () => {
@@ -109,6 +121,46 @@ describe('preset tokens', () => {
   it('reports white text on the Oerlikon blue as accessible', () => {
     expect(brandContrast(oerlikon)).toMatchObject({ onPrimary: 'white', meetsAA: true });
   });
+
+  it('replaces the palettes behind each severity with the brand status colors', () => {
+    const tokens = brandPresetTokens(oerlikonRed);
+    expect(tokens.primitive.green?.['500']).toBe(oerlikonRed.colors.success);
+    expect(tokens.primitive.sky?.['500']).toBe(oerlikonRed.colors.info);
+    expect(tokens.primitive.blue?.['500']).toBe(oerlikonRed.colors.info);
+    expect(tokens.primitive.orange?.['500']).toBe(oerlikonRed.colors.warn);
+    expect(tokens.primitive.yellow?.['500']).toBe(oerlikonRed.colors.warn);
+    expect(tokens.primitive.red?.['500']).toBe(oerlikonRed.colors.danger);
+  });
+
+  it('gives red brands a dark focus border on inputs, so focus never looks like an error', () => {
+    expect(primaryLooksLikeDanger(oerlikonRed)).toBe(true);
+    expect(primaryLooksLikeDanger(oerlikon)).toBe(false);
+    expect(brandPresetTokens(oerlikonRed).semantic.colorScheme.light.formField.focusBorderColor).toBe('{surface.800}');
+    expect(brandPresetTokens(oerlikon).semantic.colorScheme.light.formField.focusBorderColor).toBe('{primary.color}');
+  });
+
+  it('tightens fields and table cells for compact density', () => {
+    const compact = brandPresetTokens({ ...oerlikon, density: 'compact' });
+    expect(compact.semantic.formField).toMatchObject({ paddingX: '0.625rem', paddingY: '0.375rem' });
+    expect(compact.components['datatable']).toMatchObject({ bodyCell: { padding: '0.5rem 0.75rem' } });
+  });
+});
+
+describe('the Oerlikon starter brand', () => {
+  it('is red on white and light grey, valid, and readable', () => {
+    expect(validateBrand(oerlikonRed)).toEqual([]);
+    expect(oerlikonRed).toMatchObject({ id: 'oerlikon', primary: '#eb0000', surface: 'neutral', status: 'approved' });
+    expect(brandContrast(oerlikonRed)).toMatchObject({ onPrimary: 'white', meetsAA: true });
+    for (const color of Object.values(oerlikonRed.colors)) expect(contrastRatio(color, '#ffffff')).toBeGreaterThanOrEqual(4.5);
+  });
+});
+
+describe('normalizeBrand', () => {
+  it('fills in fields that older brands do not have', () => {
+    const legacy = { id: 'old', name: 'Old', status: 'draft', note: '', primary: '#123456', surface: 'zinc', fontFamily: 'Arial', fontImport: '', radius: 4 } as const;
+    expect(normalizeBrand(legacy)).toMatchObject({ colors: DEFAULT_STATUS_COLORS, headingFontFamily: '', density: 'comfortable' });
+    expect(normalizeBrand({ ...legacy, colors: { danger: '#990000' } }).colors).toEqual({ ...DEFAULT_STATUS_COLORS, danger: '#990000' });
+  });
 });
 
 describe('generated files', () => {
@@ -138,7 +190,31 @@ describe('generated files', () => {
     expect(css).toContain('--brand-space-1: 4px;');
     expect(css).toContain('--brand-space-7: 48px;');
     expect(css).toContain('font-size: 14px;');
-    expect(css).toMatch(/html,\nbody \{\n {2}font-family: var\(--brand-font\);/);
+    expect(css).toMatch(/body \{\n {2}margin: 0;\n {2}font-family: var\(--brand-font\);/);
+    expect(css).toContain('--brand-heading-font: var(--brand-font);');
+    expect(css).toContain('--brand-danger: #b91c1c;');
+  });
+
+  it('includes the layout classes agents build pages from', () => {
+    const css = brandCss(oerlikonRed);
+    for (const name of ['brand-page', 'brand-page-header', 'brand-toolbar', 'brand-card', 'brand-form-grid', 'brand-field', 'brand-form-actions', 'brand-stat-grid', 'brand-empty']) {
+      expect(css).toContain(`.${name} {`);
+    }
+    expect(css).toContain('--brand-primary-500: #eb0000;');
+    expect(css).toContain('--brand-on-primary: #ffffff;');
+    expect(css).toContain('--brand-surface-100: #f5f5f5;');
+  });
+
+  it('writes a usage guide with the colors, the component map and the red-brand rules', () => {
+    const red = brandGuide(oerlikonRed, '21');
+    expect(red).toContain('# Oerlikon: design system');
+    expect(red).toContain('`#eb0000`');
+    expect(red).toContain('PrimeNG 21');
+    expect(red).toContain('| Data list | `p-table`');
+    expect(red).toContain('red alone never means "error"');
+    expect(red).toContain('<div class="brand-page">');
+    expect(brandGuide(oerlikon)).not.toContain('red alone never means');
+    expect(brandGuide(oerlikon)).toContain('This brand is a draft');
   });
 
   it('keeps comment-breaking brand names out of generated comments', () => {
@@ -147,7 +223,7 @@ describe('generated files', () => {
 });
 
 describe('validateBrand', () => {
-  it('accepts the starter brand', () => {
+  it('accepts the test brand', () => {
     expect(validateBrand(oerlikon)).toEqual([]);
   });
 
@@ -160,7 +236,9 @@ describe('validateBrand', () => {
       fontFamily: 'Arial; } body {',
       fontImport: 'http://insecure.example.com/font.css',
       radius: 99,
+      colors: { ...DEFAULT_STATUS_COLORS, warn: 'orange' },
+      density: 'roomy' as never,
     });
-    expect(issues.map((issue) => issue.field)).toEqual(['id', 'primary', 'surface', 'fontFamily', 'fontImport', 'radius']);
+    expect(issues.map((issue) => issue.field)).toEqual(['id', 'primary', 'surface', 'colors.warn', 'fontFamily', 'fontImport', 'radius', 'density']);
   });
 });

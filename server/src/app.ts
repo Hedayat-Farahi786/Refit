@@ -12,6 +12,7 @@ import type { ProviderRegistry } from './providers/types.js';
 import { registerAppRoutes } from './routes/apps.js';
 import { registerBrowserRoutes } from './routes/browser.js';
 import { registerRunRoutes } from './routes/runs.js';
+import { registerBrandRoutes } from './routes/brands.js';
 import { registerSettingsRoutes } from './routes/settings.js';
 import { AppService } from './services/apps.js';
 import { RunService } from './services/runs.js';
@@ -77,6 +78,7 @@ export async function createServer(ctx: ServerContext, options: ServerOptions = 
 
   app.get('/api/health', async () => ({ ok: true, version: ctx.version }));
   registerSettingsRoutes(app, ctx, { activeRunId: () => runs.activeRunId(), signInOpen: () => browser.signInOpen });
+  registerBrandRoutes(app, ctx);
   registerBrowserRoutes(app, browser, () => runs.activeRunId() !== null);
   registerAppRoutes(app, services.apps, config.port);
   registerRunRoutes(app, runs, providers);

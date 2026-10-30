@@ -1,0 +1,14 @@
+{
+  "id": "oerlikon",
+  "name": "Oerlikon",
+  "status": "approved",
+  "note": "Oerlikon red #eb0000 on white and light grey. Danger uses a deeper crimson so errors never look like brand actions. Replace the font with the official typeface if Corporate Communications provides one.",
+  "primary": "#eb0000",
+  "surface": "neutral",
+  "colors": { "success": "#137a3c", "info": "#0b6aa2", "warn": "#b25e09", "danger": "#a3001b" },
+  "fontFamily": "'Segoe UI', 'Helvetica Neue', Arial, sans-serif",
+  "headingFontFamily": "",
+  "fontImport": "",
+  "radius": 4,
+  "density": "comfortable"
+}

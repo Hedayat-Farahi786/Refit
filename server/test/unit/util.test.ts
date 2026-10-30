@@ -61,12 +61,26 @@ describe('StateStore', () => {
     const dir = await tempDir();
     const file = path.join(dir, 'state.json');
     const store = await StateStore.open(file, path.join(REPO_ROOT, 'brand'));
-    expect(store.snapshot().brands.map((brand) => brand.id)).toEqual(['oerlikon-draft']);
-    expect(store.snapshot().settings.defaultBrandId).toBe('oerlikon-draft');
+    expect(store.snapshot().brands.map((brand) => brand.id)).toEqual(['oerlikon']);
+    expect(store.snapshot().settings.defaultBrandId).toBe('oerlikon');
     store.update((state) => state.settings.lastSignInAt = '2026-10-30T00:00:00.000Z');
     await store.flush();
     const reopened = await StateStore.open(file, path.join(REPO_ROOT, 'brand'));
     expect(reopened.snapshot().settings.lastSignInAt).toBe('2026-10-30T00:00:00.000Z');
+  });
+
+  it('upgrades state from older versions: the untouched blue draft brand and the old setting name', async () => {
+    const dir = await tempDir();
+    const file = path.join(dir, 'state.json');
+    const legacyDraft = { id: 'oerlikon-draft', name: 'Oerlikon (draft)', status: 'draft', note: '', primary: '#1d4f91', surface: 'slate', fontFamily: 'Arial', fontImport: '', radius: 6 };
+    const edited = { ...legacyDraft, id: 'team', name: 'Team brand' };
+    await fs.writeFile(file, JSON.stringify({ version: 1, apps: [], runs: [], brands: [legacyDraft, edited], settings: { uiBrandId: 'oerlikon-draft' } }));
+    const store = await StateStore.open(file, path.join(REPO_ROOT, 'brand'));
+    const state = store.snapshot();
+    expect(state.brands.map((brand) => brand.id)).toEqual(['oerlikon', 'team']);
+    expect(state.brands[0]).toMatchObject({ primary: '#eb0000' });
+    expect(state.brands[1]).toMatchObject({ density: 'comfortable', headingFontFamily: '', colors: { danger: '#b91c1c' } });
+    expect(state.settings).toEqual({ defaultBrandId: 'oerlikon' });
   });
 
   it('keeps a corrupt state file instead of losing it', async () => {
