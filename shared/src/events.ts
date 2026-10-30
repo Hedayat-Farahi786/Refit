@@ -24,6 +24,7 @@ export type RunEventBody =
   | { type: 'shot'; pageId: string; phase: ShotPhase; viewport: Viewport; url: string }
   | { type: 'files'; changed: ChangedFile[]; pageId?: string }
   | { type: 'cost'; usd: number; requests: number }
+  | { type: 'meta'; branch?: string; baseBranch?: string; baseCommit?: string; workspace?: string }
   | { type: 'result'; result: RunResult };
 
 export type RunEvent = RunEventBody & {

@@ -5,19 +5,30 @@ import Fastify, { type FastifyInstance } from 'fastify';
 import type { ApiError } from '@refit/shared';
 import type { ServerContext } from './context.js';
 import { registerLocalOnlyGuard } from './http/security.js';
+import { createProviderRegistry } from './providers/registry.js';
+import type { ProviderRegistry } from './providers/types.js';
 import { registerAppRoutes } from './routes/apps.js';
+import { registerRunRoutes } from './routes/runs.js';
 import { registerSettingsRoutes } from './routes/settings.js';
 import { AppService } from './services/apps.js';
+import { RunService } from './services/runs.js';
 import { UserError } from './util/errors.js';
 import { pathExists } from './util/fs.js';
 
 export interface Services {
   apps: AppService;
+  runs: RunService;
+  providers: ProviderRegistry;
+}
+
+export interface ServerOptions {
+  /** Replaces the provider registry (tests use a fast dry run). */
+  providers?: ProviderRegistry;
 }
 
 export const DEV_WEB_PORT = 4701;
 
-export async function createServer(ctx: ServerContext): Promise<{ app: FastifyInstance; services: Services }> {
+export async function createServer(ctx: ServerContext, options: ServerOptions = {}): Promise<{ app: FastifyInstance; services: Services }> {
   const app = Fastify({ logger: false, bodyLimit: 5 * 1024 * 1024 });
   // Only JSON bodies: a cross-site form cannot send application/json without a CORS preflight.
   app.removeContentTypeParser('text/plain');
@@ -41,11 +52,15 @@ export async function createServer(ctx: ServerContext): Promise<{ app: FastifyIn
     } satisfies ApiError);
   });
 
-  const services: Services = { apps: new AppService(ctx) };
+  const apps = new AppService(ctx);
+  const providers = options.providers ?? createProviderRegistry({});
+  const runs = new RunService(ctx, providers, apps);
+  const services: Services = { apps, runs, providers };
 
   app.get('/api/health', async () => ({ ok: true, version: ctx.version }));
-  registerSettingsRoutes(app, ctx, () => null);
+  registerSettingsRoutes(app, ctx, () => runs.activeRunId());
   registerAppRoutes(app, services.apps, config.port);
+  registerRunRoutes(app, runs, providers);
 
   await registerFiles(app, ctx);
   await registerWeb(app, ctx);

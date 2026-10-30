@@ -1,6 +1,6 @@
 import path from 'node:path';
 import type { FastifyInstance } from 'fastify';
-import { createServer, type Services } from '../../src/app.js';
+import { createServer, type ServerOptions, type Services } from '../../src/app.js';
 import { loadConfig, type RefitConfig } from '../../src/config/config.js';
 import type { ServerContext } from '../../src/context.js';
 import { StateBus } from '../../src/events/bus.js';
@@ -16,7 +16,7 @@ export interface TestServer {
   call(method: 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE', url: string, body?: unknown): Promise<{ status: number; json: unknown }>;
 }
 
-export async function startTestServer(): Promise<TestServer> {
+export async function startTestServer(options: ServerOptions = {}): Promise<TestServer> {
   const dataDir = await tempDir('refit-data-');
   const paths = resolvePaths({ root: REPO_ROOT, dataDir, workspacesDir: path.join(dataDir, 'workspaces') });
   let config: RefitConfig = await loadConfig({ defaultsFile: paths.configDefaults, localFile: paths.configLocal });
@@ -31,7 +31,7 @@ export async function startTestServer(): Promise<TestServer> {
       config = next;
     },
   };
-  const { app, services } = await createServer(ctx);
+  const { app, services } = await createServer(ctx, options);
   await app.ready();
   return {
     app,

@@ -13,6 +13,9 @@ export const routes: Routes = [
         children: [
           { path: '', pathMatch: 'full', redirectTo: 'overview' },
           { path: 'overview', loadComponent: () => import('./features/apps/overview/overview').then((m) => m.Overview), title: 'Overview · Refit' },
+          { path: 'modernize', loadComponent: () => import('./features/apps/modernize/modernize').then((m) => m.Modernize), title: 'Modernize · Refit' },
+          { path: 'history', loadComponent: () => import('./features/apps/history/history').then((m) => m.History), title: 'History · Refit' },
+          { path: 'runs/:runId', loadComponent: () => import('./features/run/run-page').then((m) => m.RunPage), title: 'Run · Refit' },
         ],
       },
     ],

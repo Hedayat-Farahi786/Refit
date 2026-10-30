@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { angularCommands, serveCommand } from '../../src/stacks/angular/commands.js';
 import { nodeCompatibility, resolveAngularVersion, versionFromLockfile } from '../../src/stacks/angular/versions.js';
 import { readAngularWorkspace } from '../../src/stacks/angular/workspace.js';
-import { stripJsonComments } from '../../src/stacks/repo.js';
+import { stripJsonComments } from '../../src/util/json.js';
 import { makeRepo } from '../helpers/repos.js';
 
 const pkg = (deps: Record<string, string>, scripts: Record<string, string> = {}) => JSON.stringify({ dependencies: deps, scripts });

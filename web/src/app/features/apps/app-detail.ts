@@ -1,5 +1,7 @@
 import { Component, computed, inject, input, signal } from '@angular/core';
-import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { filter, map } from 'rxjs';
 import { ConfirmationService, type MenuItem } from 'primeng/api';
 import { Button } from 'primeng/button';
 import { Menu } from 'primeng/menu';
@@ -50,6 +52,13 @@ import { ReadinessChip } from '../../ui/readiness-chip';
         </div>
         <nav class="tabs" aria-label="App sections">
           <a routerLink="overview" routerLinkActive="active" ariaCurrentWhenActive="page"><i class="pi pi-compass" aria-hidden="true"></i>Overview</a>
+          <a routerLink="modernize" routerLinkActive="active" ariaCurrentWhenActive="page">
+            <i class="pi" [class]="running() ? 'pi-spin pi-spinner' : 'pi-sparkles'" aria-hidden="true"></i>Modernize
+            @if (running()) {
+              <span class="live-dot" aria-label="A run is in progress"></span>
+            }
+          </a>
+          <a routerLink="history" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: false }" ariaCurrentWhenActive="page" [class.active]="onRunPage()"><i class="pi pi-history" aria-hidden="true"></i>History</a>
         </nav>
       </header>
       <div class="body">
@@ -127,6 +136,13 @@ import { ReadinessChip } from '../../ui/readiness-chip';
     .tabs .pi {
       font-size: 0.9rem;
     }
+    .live-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--p-primary-color);
+      box-shadow: 0 0 0 3px var(--refit-accent-soft);
+    }
     .body {
       padding: 28px 32px 64px;
       max-width: 1240px;
@@ -158,6 +174,9 @@ export class AppDetail {
     return source.kind === 'local' ? source.path : `${source.url}${source.subdir ? ` (${source.subdir})` : ''}`;
   });
   protected readonly scannedAgo = computed(() => relativeTime(this.app()?.scan?.scannedAt));
+  protected readonly running = computed(() => (this.state.state()?.runs ?? []).some((run) => run.appId === this.appId() && run.status === 'running'));
+  private readonly url = toSignal(this.router.events.pipe(filter((event) => event instanceof NavigationEnd), map(() => this.router.url)), { initialValue: this.router.url });
+  protected readonly onRunPage = computed(() => this.url().includes('/runs/'));
 
   protected readonly menuItems: MenuItem[] = [{ label: 'Remove app', icon: 'pi pi-trash', command: () => this.remove() }];
 

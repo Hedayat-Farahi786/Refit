@@ -314,6 +314,8 @@ export interface RunRecord {
   activity?: string;
   result?: RunResult;
   pullRequestUrl?: string;
+  /** True after the user removed the run's workspace (the branch only existed there). */
+  workspaceRemoved?: boolean;
   lastSeq: number;
 }
 

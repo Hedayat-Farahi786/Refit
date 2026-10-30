@@ -6,9 +6,13 @@ import type {
   AppRecord,
   AppSource,
   Brand,
+  ChangedFile,
   CommandOverrides,
   EditableConfig,
   PageConfig,
+  ProviderStatus,
+  RunRecord,
+  RunSettings,
   StateResponse,
   UiSettings,
 } from '@refit/shared';
@@ -84,6 +88,42 @@ export class Api {
 
   saveConfig(config: EditableConfig): Promise<EditableConfig> {
     return this.request(this.http.put<EditableConfig>('/api/config', config));
+  }
+
+  providers(): Promise<ProviderStatus[]> {
+    return this.request(this.http.get<ProviderStatus[]>('/api/providers'));
+  }
+
+  startRun(appId: string, settings: Partial<RunSettings>): Promise<RunRecord> {
+    return this.request(this.http.post<RunRecord>(`/api/apps/${appId}/runs`, settings));
+  }
+
+  run(runId: string): Promise<RunRecord> {
+    return this.request(this.http.get<RunRecord>(`/api/runs/${runId}`));
+  }
+
+  cancelRun(runId: string): Promise<void> {
+    return this.request(this.http.post<void>(`/api/runs/${runId}/cancel`, {}));
+  }
+
+  runChanges(runId: string): Promise<ChangedFile[]> {
+    return this.request(this.http.get<ChangedFile[]>(`/api/runs/${runId}/changes`));
+  }
+
+  runDiff(runId: string, file: string): Promise<{ file: string; diff: string }> {
+    return this.request(this.http.get<{ file: string; diff: string }>(`/api/runs/${runId}/diff`, { params: { file } }));
+  }
+
+  runReport(runId: string): Promise<string> {
+    return this.request(this.http.get(`/api/runs/${runId}/report`, { responseType: 'text' }));
+  }
+
+  removeRunWorkspace(runId: string): Promise<void> {
+    return this.request(this.http.delete<void>(`/api/runs/${runId}/workspace`));
+  }
+
+  removeRun(runId: string): Promise<void> {
+    return this.request(this.http.delete<void>(`/api/runs/${runId}`));
   }
 
   private async request<T>(observable: import('rxjs').Observable<T>): Promise<T> {

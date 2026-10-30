@@ -7,8 +7,8 @@ Living status of the build. The plan and its reasoning are in [PLAN.md](PLAN.md)
 | Phase | State |
 |---|---|
 | 1. Foundation | Done |
-| 2. Run engine | Next |
-| 3. Browser | Not started |
+| 2. Run engine | Done |
+| 3. Browser | Next |
 | 4. Claude Agent | Not started |
 | 5. GitHub Copilot | Not started |
 | 6. Upgrade and design system | Not started |
@@ -70,6 +70,66 @@ npm run test:e2e                # UI end-to-end tests (starts its own Refit on p
 npm run dev                     # live reload: http://localhost:4701
 ```
 
+## Phase 2: Run engine (done)
+
+What works:
+
+- **Pipeline** (`server/src/pipeline/`):
+  - The eight steps, each with live step events, elapsed time and a plain-language "Now"
+    sentence.
+  - Prepare: a clone of the last commit, with `origin` pointed at the source repo's own remote (never
+    at the developer's folder), branch `refit/modernize-<yyyymmdd>-<id>`, `.refit/` excluded from
+    git, and a git identity set when the developer has none.
+  - Install: retries once with `--legacy-peer-deps`, and restores lockfiles the install rewrote.
+  - Baseline: build, plus tests when turned on. If the app does not build, Refit stops with an
+    explanation. `ERR_OSSL_EVP_UNSUPPORTED` triggers one retry with `--openssl-legacy-provider`.
+  - Pages, one at a time: checkpoint, agent task, guard, build. A broken build gets one fix task;
+    if it still fails, Refit rolls back to the checkpoint and flags the page. Each page gets its own
+    commit and report. Refit stops starting pages when the run budget is reached.
+  - Final checks: build, and tests compared with the baseline (only new failures count).
+  - Ready: `report.md` in `data/runs/<id>/`. Nothing is ever pushed.
+  - Upgrade and design-system steps exist and are skipped until phase 6.
+- **Guard** (lock 2, every provider):
+  - Lists every change since the checkpoint (committed, staged, unstaged, untracked) and reverts
+    protected files: edited files are restored, new files deleted, deleted files restored.
+  - A change outside the app folder is protected.
+  - A non-component file that calls the backend (`HttpClient`, `fetch`, `axios`) is protected
+    whatever its name.
+  - New ignored `.env*` files are removed.
+  - Sensitive changes are recorded for the report.
+- **Dry run provider:** realistic events; marks each page's template. Test hooks can touch a
+  protected file or break a page's build.
+- **Event log:**
+  - One JSONL file per run.
+  - SSE replays everything, then streams; reconnects resume from `Last-Event-ID`.
+  - A shared reducer (`applyRunEvent`) keeps the server's `state.json` summary and the UI identical
+    and is safe to replay.
+- **Runs:**
+  - One active run at a time. Start checks readiness, sample values and the provider.
+  - Cancel kills every process tree and keeps the branch and workspace.
+  - After a server restart, a run that was in progress shows "Interrupted" with its workspace path.
+  - Remove workspace (keeps history) and Delete run are both available.
+- **UI:**
+  - Modernize tab: provider cards with the reason when one is unavailable; brand with a draft
+    warning; target Angular; review rounds; API-change policy; tests; budgets; the estimated
+    maximum cost before Start; and the reason when Start is disabled.
+  - Live run view, Simple mode: the Now card, a stepper with elapsed times, page cards with
+    thumbnail slots and "What changed", and a cost meter.
+  - Live run view, Developer mode: a virtualized terminal log with filters (All, Agent, Commands,
+    Guard, Warnings), search, follow-mode and copy; changed files with a diff viewer that has line
+    numbers.
+  - Run outcome: result tiles, branch and workspace with copy buttons, the report, and clean-up.
+  - History tab.
+- **Tests:**
+  - 199 unit tests: guard, report parser, budget, commands, reducer and event log, on top of
+    phase 1.
+  - 3 integration tests: a full dry run on fixture 1 with guard reverts and a rolled-back page,
+    cancel mid-run, and the one-run-at-a-time rule.
+  - 6 end-to-end tests: one starts a dry run and follows it in both views.
+
+How to try it: `npm start`, add an app, fill in sample values, open **Modernize**, choose **Dry run**
+and **Start modernizing**. Switch between **Simple** and **Developer** while it runs.
+
 ## Decisions and differences from the spec
 
 1. **PrimeNG 21 and Angular 21, not the newest versions.** PrimeNG 22, `@primeuix/themes` 3 and
@@ -91,12 +151,11 @@ npm run dev                     # live reload: http://localhost:4701
 6. **Glob rule:** a pattern without a slash (`package.json`, `.env*`) matches the file name at any
    depth, like `.gitignore`. A leading `/` anchors it to the repo root. Matching ignores case
    (Windows and macOS file systems do).
-7. **Apps inside bigger repos** (for example `ClientApp/` in a .NET solution) are supported. From
-   phase 2, any change outside the app folder will be treated as protected.
+7. **Apps inside bigger repos** (for example `ClientApp/` in a .NET solution) are supported, and any
+   change outside the app folder is treated as protected.
 8. **Angular 20+ file names.** The new style guide drops suffixes like `.component.ts` and
-   `.service.ts`. Component counting reads file contents (`@Component(`), not file names. Phase 2's
-   guard will add a content rule: non-component TypeScript files that use `HttpClient` count as
-   protected even without a `.service.ts` name.
+   `.service.ts`. Component counting reads file contents (`@Component(`), and the guard protects any
+   non-component file that calls the backend, whatever its name.
 9. **PrimeNG 21 assumes a 14px root font size.** The generated `brand.css` sets it; PrimeNG 22 moves
    to 16px.
 10. **`brand.css` in Refit itself** is wrapped in the lowest cascade layer, so Refit's dark mode can
@@ -105,6 +164,15 @@ npm run dev                     # live reload: http://localhost:4701
     and for running a second Refit.
 12. **The playbook stays as written in the spec** (Angular + PrimeNG). A second stack would add its
     own playbook folder.
+13. **Per-page budget covers the whole page:** the page task and its fix task share it, and so will
+    design reviews from phase 7. The foundation task has its own `budget.foundationUsd`.
+14. **Extra endpoints:**
+    - `GET /api/runs/:id/changes`, `GET /api/runs/:id/report`, `DELETE /api/runs/:id/workspace`,
+      `DELETE /api/runs/:id`, and `GET /api/inspect-folder`.
+    - The global `GET /api/events` stream tells the UI when to refresh.
+    - A `meta` run event carries the branch and workspace.
+15. **Final build failure** marks the Final checks step failed, but the run still ends as "Ready for
+    review" with the failure shown prominently, because the branch is still useful to a developer.
 
 ## Notes for later phases
 
