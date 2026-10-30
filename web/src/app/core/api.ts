@@ -10,7 +10,9 @@ import type {
   CommandOverrides,
   EditableConfig,
   PageConfig,
+  ProviderId,
   ProviderStatus,
+  ProviderTestResult,
   RunRecord,
   RunSettings,
   StateResponse,
@@ -92,6 +94,10 @@ export class Api {
 
   providers(): Promise<ProviderStatus[]> {
     return this.request(this.http.get<ProviderStatus[]>('/api/providers'));
+  }
+
+  testProvider(id: ProviderId): Promise<ProviderTestResult> {
+    return this.request(this.http.post<ProviderTestResult>(`/api/providers/${id}/test`, {}));
   }
 
   startRun(appId: string, settings: Partial<RunSettings>): Promise<RunRecord> {

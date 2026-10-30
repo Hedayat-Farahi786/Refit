@@ -323,3 +323,12 @@ providers**. Then open an app's **Agent review** tab and start a review (at most
   apps on Node 24 whose dependencies rely on install scripts.
 - The Copilot CLI JSONL event schema for `-p --output-format json` is not documented; phase 5 parses
   it defensively.
+- Phase 6 version table, checked on npm on 2026-10-30. Use community (MIT) releases only. Versions
+  with an `-lts` suffix carry PrimeTek's commercial LTS license.
+  - Angular 18: `primeng@18.0.2` with `@primeng/themes@18.0.2`
+  - Angular 19: `primeng@19.1.4` with `@primeng/themes@19.1.4`
+  - Angular 20: `primeng@20.4.0` with `@primeuix/themes@1.2.5`
+  - Angular 21: `primeng@21.1.10` with `@primeuix/themes@2.0.3`
+  - Every row uses `primeicons@7.0.0`. PrimeNG 18–20 also need `@angular/animations`
+    (`provideAnimationsAsync`); PrimeNG 21 does not.
+  - PrimeNG 17 has no presets, so the design-system step needs Angular 18 or later.

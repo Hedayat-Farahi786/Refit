@@ -94,3 +94,45 @@ export function reviewPrompt(input: ReviewPromptInput): string {
     '```',
   ].join('\n');
 }
+
+export interface FoundationPromptInput {
+  /** "standalone" (app.config.ts) or "ngmodule" (AppModule). */
+  bootstrap: 'standalone' | 'ngmodule' | 'unknown';
+  /** Where PrimeNG is registered, e.g. "src/app/app.config.ts". */
+  providersFile: string | null;
+  /** The global stylesheet, e.g. "src/styles.scss". */
+  globalStyles: string | null;
+  /** The app shell files: root component, header, navigation, footer. */
+  shellFiles: string[];
+  primeng: string;
+  themePackage: string;
+  /** PrimeNG 18–20 animate through Angular's animations package. */
+  needsAngularAnimations: boolean;
+  buildCommand: string;
+}
+
+export function foundationPrompt(input: FoundationPromptInput): string {
+  const where = input.providersFile ?? (input.bootstrap === 'ngmodule' ? 'the AppModule' : 'the application config');
+  return [
+    'Task: set up the design system and modernize the app shell.',
+    '',
+    `Refit installed PrimeNG ${input.primeng} with ${input.themePackage} and primeicons, and wrote two files from the brand:`,
+    '- src/app/theme/brand-preset.ts (exports BrandPreset)',
+    '- src/app/theme/brand.css (brand CSS variables and base typography)',
+    '',
+    'Do these in order:',
+    `1. Register PrimeNG in ${where}: providePrimeNG({ theme: { preset: BrandPreset, options: { darkModeSelector: '.app-dark' } } })` +
+      (input.needsAngularAnimations ? ', and provideAnimationsAsync() if animations are not provided yet.' : '.'),
+    '   Only add providers. Keep every existing provider, route, interceptor and sign-in setting exactly as it is.',
+    `2. Load the styles globally from ${input.globalStyles ?? 'the global stylesheet'}: import primeicons/primeicons.css and src/app/theme/brand.css. Do not edit angular.json.`,
+    '3. Modernize the app shell (header, navigation, user menu, footer) with PrimeNG and the brand. Keep every link, sign-in and sign-out action, permission check and router outlet.',
+    '4. Add one global p-toast and one p-confirmdialog to the root component, with MessageService and ConfirmationService provided once.',
+    '',
+    'Files you may change:',
+    ...[input.providersFile, input.globalStyles, ...input.shellFiles].filter((file): file is string => Boolean(file)).map((file) => `- ${file}`),
+    '',
+    `Build command: ${input.buildCommand}`,
+    '',
+    'Run the build until it passes. Finish with the summary and the JSON report.',
+  ].join('\n');
+}

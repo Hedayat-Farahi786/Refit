@@ -9,7 +9,7 @@
     "strongModel": "opus",
     "effort": "medium"
   },
-  "copilot": { "model": "", "maxAiCreditsPerTask": 0 },
+  "copilot": { "command": "copilot", "model": "", "maxAiCreditsPerTask": 0 },
   "defaults": {
     "polishRounds": 1,
     "runTests": false,

@@ -180,6 +180,16 @@ import { ProvidersPanel } from './providers-panel';
                 <label for="m-copilot">GitHub Copilot model</label>
                 <input pInputText id="m-copilot" name="copilotModel" [(ngModel)]="config.copilot.model" class="mono" placeholder="Copilot's default" />
               </div>
+              <div class="field">
+                <label for="m-copilot-credits">GitHub Copilot: AI credit limit per task</label>
+                <p-inputnumber inputId="m-copilot-credits" name="copilotCredits" [(ngModel)]="config.copilot.maxAiCreditsPerTask" [min]="0" [useGrouping]="false" [fluid]="true" />
+                <span class="field-hint">0 means no limit. Copilot's smallest limit is 30.</span>
+              </div>
+              <div class="field">
+                <label for="m-copilot-cmd">GitHub Copilot CLI program</label>
+                <input pInputText id="m-copilot-cmd" name="copilotCommand" [(ngModel)]="config.copilot.command" class="mono" placeholder="copilot" />
+                <span class="field-hint">A name on the PATH or the full path, for example C:\\Tools\\copilot.exe.</span>
+              </div>
             </div>
           </section>
 

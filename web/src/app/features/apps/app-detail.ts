@@ -31,11 +31,14 @@ import { ReadinessChip } from '../../ui/readiness-chip';
               <span class="mono small soft truncate">{{ sourceText() }}</span>
               <app-copy-button [value]="sourceText()" label="Copy the source path" />
             </div>
+            @if (app.scan) {
+              <span class="muted small scanned-narrow">Scanned {{ scannedAgo() }}</span>
+            }
           </div>
           <div class="actions cluster">
             <app-readiness-chip [readiness]="app.readiness" />
             @if (app.scan) {
-              <span class="muted small nowrap">Scanned {{ scannedAgo() }}</span>
+              <span class="muted small nowrap scanned-wide">Scanned {{ scannedAgo() }}</span>
             }
             <p-button
               label="Scan again"
@@ -147,6 +150,17 @@ import { ReadinessChip } from '../../ui/readiness-chip';
     .body {
       padding: 28px 32px 64px;
       max-width: 1240px;
+    }
+    .scanned-narrow {
+      display: none;
+    }
+    @media (max-width: 560px) {
+      .scanned-wide {
+        display: none;
+      }
+      .scanned-narrow {
+        display: block;
+      }
     }
     @media (max-width: 640px) {
       .head {

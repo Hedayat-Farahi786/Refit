@@ -1,4 +1,4 @@
-import type { AgentTaskKind, CostUnit, ProviderId, ProviderStatus } from '@refit/shared';
+import type { AgentTaskKind, CostUnit, ProviderId, ProviderStatus, ProviderTestResult } from '@refit/shared';
 
 /** One unit of AI work: review, foundation, page, polish or fix. */
 export interface AgentTask {
@@ -62,4 +62,6 @@ export interface ProviderRegistry {
   statuses(): Promise<ProviderStatus[]>;
   /** Throws a UserError explaining why when the provider cannot be used. */
   get(id: ProviderId): Promise<AgentProvider>;
+  /** Sends one tiny real request ("Test connection"). Throws a UserError when it cannot. */
+  test(id: ProviderId): Promise<ProviderTestResult>;
 }

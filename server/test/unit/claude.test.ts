@@ -162,6 +162,22 @@ describe('ClaudeAgentProvider', () => {
     expect(turns.result).toMatchObject({ limitReached: true, error: 'it reached the turn limit' });
   });
 
+  it('tests the connection with one small request: no tools, the smallest model and a cost cap', async () => {
+    const fake = scripted([
+      { type: 'assistant', message: { model: 'claude-haiku-5-5', content: [{ type: 'text', text: 'OK' }] }, parent_tool_use_id: null, uuid: 'u', session_id: 's' },
+      { type: 'result', subtype: 'success', result: 'OK', total_cost_usd: 0.0004, errors: [] },
+    ]);
+    const provider = new ClaudeAgentProvider({ queryFn: fake.queryFn, version: '9.9.9', effort: 'medium', configDir: '/refit/data/claude-config' });
+    const result = await provider.test();
+    expect(result).toMatchObject({ ok: true, detail: 'Claude answered "OK".', model: 'claude-haiku-5-5', costUsd: 0.0004 });
+    expect(fake.options()).toMatchObject({ model: 'haiku', maxTurns: 1, maxBudgetUsd: 0.05, tools: [], settingSources: [], persistSession: false });
+    expect(fake.options().env).toMatchObject({ CLAUDE_CONFIG_DIR: '/refit/data/claude-config', CLAUDE_CODE_OAUTH_TOKEN: undefined });
+
+    const failing = scripted([{ type: 'result', subtype: 'error_during_execution', total_cost_usd: 0, errors: ['401 authentication_error: invalid x-api-key'] }]);
+    const failed = await new ClaudeAgentProvider({ queryFn: failing.queryFn, version: '9.9.9', effort: 'medium' }).test();
+    expect(failed).toMatchObject({ ok: false, detail: 'Anthropic rejected the API key. Check ANTHROPIC_API_KEY in .env and restart Refit.' });
+  });
+
   it('explains authentication and network errors', async () => {
     const failing = new ClaudeAgentProvider({
       queryFn: (() =>

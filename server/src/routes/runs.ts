@@ -5,8 +5,10 @@ import { parseBody } from '../http/validate.js';
 import type { ProviderRegistry } from '../providers/types.js';
 import type { RunService } from '../services/runs.js';
 
+const providerIdSchema = z.enum(['claude', 'copilot', 'dryrun']);
+
 const settingsSchema = z.object({
-  provider: z.enum(['claude', 'copilot', 'dryrun']).optional(),
+  provider: providerIdSchema.optional(),
   brandId: z.string().optional(),
   targetAngularMajor: z.union([z.number().int().min(18).max(30), z.literal('keep')]).optional(),
   polishRounds: z.union([z.literal(0), z.literal(1), z.literal(2)]).optional(),
@@ -19,6 +21,7 @@ const settingsSchema = z.object({
 
 export function registerRunRoutes(app: FastifyInstance, runs: RunService, providers: ProviderRegistry): void {
   app.get('/api/providers', async () => providers.statuses());
+  app.post<{ Params: { id: string } }>('/api/providers/:id/test', async (request) => providers.test(parseBody(providerIdSchema, request.params.id)));
 
   app.post<{ Params: { id: string } }>('/api/apps/:id/runs', async (request, reply) => {
     const settings = parseBody(settingsSchema, request.body);
@@ -29,7 +32,7 @@ export function registerRunRoutes(app: FastifyInstance, runs: RunService, provid
   app.get<{ Params: { id: string } }>('/api/runs/:id', async (request) => runs.get(request.params.id));
 
   app.post<{ Params: { id: string } }>('/api/apps/:id/review', async (request, reply) => {
-    const body = parseBody(z.object({ provider: z.enum(['claude', 'copilot', 'dryrun']) }), request.body);
+    const body = parseBody(z.object({ provider: providerIdSchema }), request.body);
     return reply.code(201).send(await runs.startReview(request.params.id, body.provider));
   });
 

@@ -1,7 +1,8 @@
 import { Component, inject, signal } from '@angular/core';
-import type { ProviderStatus } from '@refit/shared';
+import type { ProviderId, ProviderStatus, ProviderTestResult } from '@refit/shared';
 import { Button } from 'primeng/button';
 import { Api } from '../../core/api';
+import { usd } from '../../core/format';
 import { Notify } from '../../core/notify';
 
 const UNIT_LABEL = { usd: 'Costs in US dollars', requests: 'Counts premium requests', credits: 'Counts AI credits' } as const;
@@ -38,6 +39,30 @@ const UNIT_LABEL = { usd: 'Costs in US dollars', requests: 'Counts premium reque
                   </li>
                 }
               </ul>
+            }
+            @if (provider.available && provider.testCost) {
+              <div class="test">
+                <p-button
+                  label="Test connection"
+                  icon="pi pi-bolt"
+                  severity="secondary"
+                  [outlined]="true"
+                  size="small"
+                  [loading]="testing() === provider.id"
+                  [disabled]="testing() !== null"
+                  (onClick)="test(provider.id)"
+                />
+                <span class="muted small">Sends one short request ({{ provider.testCost }}).</span>
+                @if (results()[provider.id]; as result) {
+                  <p class="result small" [class.failed]="!result.ok" role="status">
+                    <i [class]="result.ok ? 'pi pi-check-circle ok' : 'pi pi-times-circle bad'" aria-hidden="true"></i>
+                    <span>
+                      {{ result.detail }}
+                      <span class="muted">{{ resultMeta(result) }}</span>
+                    </span>
+                  </p>
+                }
+              </div>
             }
             @if (provider.setup.length) {
               <div class="setup">
@@ -133,6 +158,26 @@ const UNIT_LABEL = { usd: 'Costs in US dollars', requests: 'Counts premium reque
     .empty {
       padding: 16px 20px;
     }
+    .test {
+      margin-left: 28px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .result {
+      flex-basis: 100%;
+      display: flex;
+      gap: 8px;
+      align-items: baseline;
+      margin: 0;
+      padding: 8px 12px;
+      border-radius: var(--refit-radius);
+      background: var(--refit-success-soft);
+    }
+    .result.failed {
+      background: var(--refit-danger-soft);
+    }
   `,
 })
 export class ProvidersPanel {
@@ -140,6 +185,8 @@ export class ProvidersPanel {
   private readonly notify = inject(Notify);
   protected readonly providers = signal<ProviderStatus[]>([]);
   protected readonly loading = signal(false);
+  protected readonly testing = signal<ProviderId | null>(null);
+  protected readonly results = signal<Partial<Record<ProviderId, ProviderTestResult>>>({});
 
   constructor() {
     void this.load();
@@ -154,6 +201,25 @@ export class ProvidersPanel {
     } finally {
       this.loading.set(false);
     }
+  }
+
+  protected async test(id: ProviderId): Promise<void> {
+    this.testing.set(id);
+    try {
+      const result = await this.api.testProvider(id);
+      this.results.update((all) => ({ ...all, [id]: result }));
+    } catch (error) {
+      this.notify.error(error, 'Could not test the connection');
+    } finally {
+      this.testing.set(null);
+    }
+  }
+
+  protected resultMeta(result: ProviderTestResult): string {
+    const parts = [result.model, `${(result.durationMs / 1000).toFixed(1)} s`];
+    if (result.costUsd) parts.push(usd(result.costUsd));
+    if (result.requests) parts.push(`${result.requests} request${result.requests === 1 ? '' : 's'}`);
+    return parts.filter(Boolean).join(' · ');
   }
 
   protected unit(provider: ProviderStatus): string {

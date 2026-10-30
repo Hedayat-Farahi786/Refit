@@ -161,6 +161,20 @@ export interface ProviderStatus {
   setup: string[];
   /** What the provider counts: dollars, or requests/credits for Copilot. */
   costUnit: CostUnit;
+  /** Set when "Test connection" is possible: what one test costs, in plain words. */
+  testCost?: string;
+}
+
+/** The result of "Test connection": one tiny real request to the provider. */
+export interface ProviderTestResult {
+  ok: boolean;
+  /** The model's reply, or what went wrong and how to fix it. */
+  detail: string;
+  durationMs: number;
+  /** Which model answered, when the provider says. */
+  model?: string;
+  costUsd?: number;
+  requests?: number;
 }
 
 export type CostUnit = 'usd' | 'requests' | 'credits';
@@ -333,7 +347,8 @@ export interface UiSettings {
 export interface EditableConfig {
   budget: { perPageUsd: number; perRunUsd: number; reviewUsd: number; foundationUsd: number };
   claude: { models: Record<AgentTaskKind, string>; strongModel: string; effort: string };
-  copilot: { model: string; maxAiCreditsPerTask: number };
+  /** command: the Copilot CLI program (a name on PATH or a full path). */
+  copilot: { command: string; model: string; maxAiCreditsPerTask: number };
   defaults: {
     polishRounds: 0 | 1 | 2;
     runTests: boolean;

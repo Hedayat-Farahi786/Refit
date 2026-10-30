@@ -1,5 +1,6 @@
+import os from 'node:os';
 import type { CanUseTool, HookCallback, Options, PreToolUseHookInput, query as sdkQuery, SDKMessage } from '@anthropic-ai/claude-agent-sdk';
-import type { ProviderStatus } from '@refit/shared';
+import type { ProviderStatus, ProviderTestResult } from '@refit/shared';
 import { errorMessage } from '../util/errors.js';
 import type { ProviderModule } from './registry.js';
 import { decideTool, describeToolInput, type ToolPolicy } from './tool-policy.js';
@@ -68,6 +69,7 @@ export async function claudeStatus(): Promise<ProviderStatus> {
           ...(sdk ? [] : ['Run npm install in the Refit folder.']),
         ],
     costUnit: 'usd',
+    ...(available ? { testCost: 'about $0.001' } : {}),
   };
 }
 
@@ -129,12 +131,7 @@ export class ClaudeAgentProvider implements AgentProvider {
       permissionMode: 'default',
       canUseTool,
       hooks: { PreToolUse: [{ hooks: [preToolUse] }] },
-      env: {
-        ...process.env,
-        CLAUDE_AGENT_SDK_CLIENT_APP: `refit/${this.options.version}`,
-        CLAUDE_CODE_OAUTH_TOKEN: undefined,
-        ...(this.options.configDir ? { CLAUDE_CONFIG_DIR: this.options.configDir } : {}),
-      },
+      env: this.env(),
     };
 
     let lastText = '';
@@ -177,6 +174,56 @@ export class ClaudeAgentProvider implements AgentProvider {
     }
     return { ...outcome, text: finalText || lastText, costUsd, requests: 0 };
   }
+
+  /** "Test connection": one short question to the smallest model, with no tools and a 5 cent cap. */
+  async test(): Promise<ProviderTestResult> {
+    const query = this.options.queryFn ?? (await import('@anthropic-ai/claude-agent-sdk')).query;
+    const started = Date.now();
+    const options: Options = {
+      cwd: os.tmpdir(),
+      model: 'haiku',
+      maxTurns: 1,
+      maxBudgetUsd: 0.05,
+      persistSession: false,
+      settingSources: [],
+      tools: [],
+      permissionMode: 'default',
+      canUseTool: async () => ({ behavior: 'deny', message: 'No tools in a connection test.' }),
+      systemPrompt: 'This is a connection check. Reply with the single word OK.',
+      env: this.env(),
+    };
+    let reply = '';
+    let model: string | undefined;
+    let costUsd = 0;
+    let error: string | undefined;
+    try {
+      for await (const message of query({ prompt: 'Connection check: reply with OK.', options }) as AsyncIterable<SDKMessage>) {
+        if (message.type === 'assistant') {
+          model = message.message.model;
+          for (const block of message.message.content) if (block.type === 'text') reply += block.text;
+        } else if (message.type === 'result') {
+          costUsd = message.total_cost_usd ?? 0;
+          if (message.subtype === 'success') reply = message.result || reply;
+          else error = friendlyError(message.errors.join(' ') || message.subtype);
+        }
+      }
+    } catch (caught) {
+      error = friendlyError(errorMessage(caught));
+    }
+    const durationMs = Date.now() - started;
+    if (error) return { ok: false, detail: error, durationMs, costUsd };
+    return { ok: true, detail: `Claude answered "${reply.trim().slice(0, 80) || '(empty)'}".`, durationMs, costUsd, ...(model ? { model } : {}) };
+  }
+
+  /** The agent's environment: Refit's own config folder and never a claude.ai login. */
+  private env(): Record<string, string | undefined> {
+    return {
+      ...process.env,
+      CLAUDE_AGENT_SDK_CLIENT_APP: `refit/${this.options.version}`,
+      CLAUDE_CODE_OAUTH_TOKEN: undefined,
+      ...(this.options.configDir ? { CLAUDE_CONFIG_DIR: this.options.configDir } : {}),
+    };
+  }
 }
 
 /** Turns common SDK and API errors into something a person can act on. */
@@ -193,5 +240,5 @@ export function friendlyError(message: string): string {
 }
 
 export function claudeModule(options: ClaudeProviderOptions): ProviderModule {
-  return { status: claudeStatus, create: () => new ClaudeAgentProvider(options) };
+  return { status: claudeStatus, create: () => new ClaudeAgentProvider(options), test: () => new ClaudeAgentProvider(options).test() };
 }

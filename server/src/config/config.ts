@@ -31,7 +31,7 @@ export const configSchema = z.object({
     strongModel: z.string(),
     effort: z.enum(['low', 'medium', 'high', 'xhigh', 'max']),
   }),
-  copilot: z.object({ model: z.string(), maxAiCreditsPerTask: z.number().min(0) }),
+  copilot: z.object({ command: z.string(), model: z.string(), maxAiCreditsPerTask: z.number().min(0) }),
   defaults: z.object({
     polishRounds: z.union([z.literal(0), z.literal(1), z.literal(2)]),
     runTests: z.boolean(),
