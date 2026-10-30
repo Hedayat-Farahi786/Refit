@@ -6,7 +6,7 @@ import { Drawer } from 'primeng/drawer';
 import { Toast } from 'primeng/toast';
 import { filter } from 'rxjs';
 import { AppState } from './core/app-state';
-import { Shell } from './core/shell';
+import { isPreviewPage, Shell } from './core/shell';
 import { AddAppDialog } from './features/apps/add-app-dialog';
 import { Sidebar } from './shell/sidebar';
 
@@ -14,46 +14,63 @@ import { Sidebar } from './shell/sidebar';
   selector: 'app-root',
   imports: [RouterOutlet, Toast, ConfirmDialog, Drawer, Button, Sidebar, AddAppDialog],
   template: `
-    <a class="skip-link" href="#main">Skip to content</a>
-    <div class="layout">
-      <aside class="rail" aria-label="Refit">
-        <app-sidebar />
-      </aside>
+    @if (preview) {
+      <router-outlet />
+    } @else {
+      <a class="skip-link" href="#main">Skip to content</a>
+      <div class="layout">
+        <aside class="rail" aria-label="Refit">
+          <app-sidebar />
+        </aside>
 
-      <header class="mobile-bar">
-        <p-button icon="pi pi-bars" [text]="true" severity="secondary" ariaLabel="Open the menu" (onClick)="shell.drawerOpen.set(true)" />
-        <span class="mobile-name">Refit</span>
-      </header>
-      @if (state.error() && !state.loaded()) {
-        <main id="main" class="fatal">
-          <div class="panel fatal-card" role="alert">
-            <i class="pi pi-exclamation-triangle" aria-hidden="true"></i>
-            <h1>Refit cannot load its data</h1>
-            <p class="soft">{{ state.error()?.message }}</p>
-            @if (state.error()?.fix) {
-              <p class="muted small">{{ state.error()?.fix }}</p>
-            }
-            <p-button label="Try again" icon="pi pi-refresh" (onClick)="state.load()" />
-          </div>
-        </main>
-      } @else {
-        <main id="main" class="main" tabindex="-1">
-          <router-outlet />
-        </main>
-      }
-    </div>
-    <p-drawer [visible]="shell.drawerOpen()" (visibleChange)="shell.drawerOpen.set($event)" position="left" [showCloseIcon]="false" styleClass="refit-drawer" ariaLabel="Menu">
-      <app-sidebar />
-    </p-drawer>
-    @if (!state.connected()) {
-      <div class="offline" role="status" aria-live="polite">
-        <i class="pi pi-wifi" aria-hidden="true"></i>
-        Lost the connection to Refit. Reconnecting…
+        <header class="mobile-bar">
+          <p-button
+            icon="pi pi-bars"
+            [text]="true"
+            severity="secondary"
+            ariaLabel="Open the menu"
+            (onClick)="shell.drawerOpen.set(true)"
+          />
+          <span class="mobile-name">Refit</span>
+        </header>
+        @if (state.error() && !state.loaded()) {
+          <main id="main" class="fatal">
+            <div class="panel fatal-card" role="alert">
+              <i class="pi pi-exclamation-triangle" aria-hidden="true"></i>
+              <h1>Refit cannot load its data</h1>
+              <p class="soft">{{ state.error()?.message }}</p>
+              @if (state.error()?.fix) {
+                <p class="muted small">{{ state.error()?.fix }}</p>
+              }
+              <p-button label="Try again" icon="pi pi-refresh" (onClick)="state.load()" />
+            </div>
+          </main>
+        } @else {
+          <main id="main" class="main" tabindex="-1">
+            <router-outlet />
+          </main>
+        }
       </div>
+      <p-drawer
+        [visible]="shell.drawerOpen()"
+        (visibleChange)="shell.drawerOpen.set($event)"
+        position="left"
+        [showCloseIcon]="false"
+        styleClass="refit-drawer"
+        ariaLabel="Menu"
+      >
+        <app-sidebar />
+      </p-drawer>
+      @if (!state.connected()) {
+        <div class="offline" role="status" aria-live="polite">
+          <i class="pi pi-wifi" aria-hidden="true"></i>
+          Lost the connection to Refit. Reconnecting…
+        </div>
+      }
+      <app-add-app-dialog [visible]="shell.addAppOpen()" (visibleChange)="shell.addAppOpen.set($event)" />
+      <p-toast position="bottom-right" />
+      <p-confirmdialog [style]="{ width: '440px', maxWidth: 'calc(100vw - 32px)' }" />
     }
-    <app-add-app-dialog [visible]="shell.addAppOpen()" (visibleChange)="shell.addAppOpen.set($event)" />
-    <p-toast position="bottom-right" />
-    <p-confirmdialog [style]="{ width: '440px', maxWidth: 'calc(100vw - 32px)' }" />
   `,
   styles: `
     .layout {
@@ -168,6 +185,7 @@ import { Sidebar } from './shell/sidebar';
 export class App {
   protected readonly state = inject(AppState);
   protected readonly shell = inject(Shell);
+  protected readonly preview = isPreviewPage();
 
   constructor() {
     // Close the drawer after navigating, wherever the navigation came from.

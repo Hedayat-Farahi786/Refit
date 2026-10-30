@@ -10,8 +10,9 @@ Living status of the build. The plan and its reasoning are in [PLAN.md](PLAN.md)
 | 2. Run engine | Done |
 | 3. Browser | Done |
 | 4. Claude Agent | Done |
-| 5. GitHub Copilot | Next |
-| 6. Upgrade and design system | Not started |
+| 5. GitHub Copilot | Paused (Angular first, as asked); groundwork and research done |
+| Design and brands (asked for during phase 5) | Done |
+| 6. Upgrade and design system | Next |
 | 7. Polish loop and delivery | Not started |
 | 8. Finish | Not started |
 
@@ -253,6 +254,48 @@ How to try it: put `ANTHROPIC_API_KEY=...` in `.env`, restart Refit, and check *
 providers**. Then open an app's **Agent review** tab and start a review (at most
 `budget.reviewUsd`, $0.60 by default). Then run **Modernize** with Claude Agent.
 
+## Design and brands (done, asked for during phase 5)
+
+What changed:
+
+- **Refit's own look.** Refit no longer wears a brand. It has a fixed, calm design:
+  - warm neutral surfaces, ink-black actions, and one quiet blue for focus and live states
+  - Inter for the interface and Source Serif 4 for page titles; both are bundled, so nothing loads
+    from the internet
+  - a sidebar with Add app, Apps / Brands / Settings, your apps with status dots, the AI status
+    and the theme toggle; a drawer on phones
+  - an Apps dashboard of cards, and the same page header on every screen
+  - The old "Brand for Refit itself" setting is now "the default brand for new runs" (and is
+    migrated).
+- **Complete brands.** A brand now has primary and neutral colors, status colors (success, info,
+  warning, danger), a body and heading font, corner radius and density. Refit generates three
+  files for an app:
+  - `brand-preset.ts`: the PrimeNG preset. It covers the primary scale and surfaces, the palettes
+    behind every severity, the focus ring, form fields, density, table cells, cards and tags.
+  - `brand.css`: variables, base type, and layout classes agents build pages from (page, header,
+    toolbar, card, form grid, field, stats, empty state).
+  - `BRAND.md`: the usage guide for agents and reviewers. It says which color is for what, gives a
+    page skeleton, maps each need to a PrimeNG component, and covers states and accessibility.
+- **Oerlikon brand.** Red #eb0000 on white and light grey (the neutral family), with 4px corners
+  and a deeper crimson for danger. Every status color reaches 4.5:1 on white. Because the brand is
+  red, inputs get a dark focus border and danger actions are outlined with an icon, so errors
+  never look like brand actions. An untouched old blue draft is replaced on start-up.
+- **Brand studio** (Brands in the sidebar):
+  - cards with swatches; New, Import (.brand.json), Duplicate, Use for new runs, Export, Delete
+  - an editor with a validated form (identity, color with a contrast check, neutrals, status
+    colors, type, corners, density) and a dirty-state save bar
+  - **Preview:** real PrimeNG components in an isolated iframe, desktop or phone width
+  - **Palette:** every shade with its contrast
+  - **Code:** the three files for PrimeNG 18–21, to copy or download
+- **Fixes:** every PrimeNG Select now gets its name from its visible label. `<label for>` cannot
+  name the span PrimeNG renders.
+- **Tests:** 250 unit tests (status palettes, the red-brand rule, density, CSS layout classes,
+  the guide, migration, brand API) and 11 end-to-end tests. The brand tests cover the live preview
+  restyling as you type, the code view per PrimeNG version, and duplicate, save, export and delete.
+
+How to try it: open **Brands**, then **Oerlikon**. Change the color or the corners and watch the
+preview. Check **Palette** and **Code**, then **Export**.
+
 ## Decisions and differences from the spec
 
 1. **PrimeNG 21 and Angular 21, not the newest versions.** PrimeNG 22, `@primeuix/themes` 3 and
@@ -316,6 +359,16 @@ providers**. Then open an app's **Agent review** tab and start a review (at most
 22. **An agent review is a run of kind `review`.** It gets the same history, live events and cancel as
     a modernize run, and can run while a modernize run is active, because it only reads the scan
     snapshot.
+23. **Refit has its own fixed look** (requested). The spec had Refit render itself with the
+    selected brand. Brands now apply only to the apps Refit modernizes.
+24. **Brands are richer than the spec's.** The spec covered primary, neutrals, font and radius. A
+    brand now also has status colors, a heading font and density, and comes with BRAND.md and
+    layout classes, so agents have every building block a page needs.
+25. **The brand preview runs in an iframe of Refit itself** (`/preview/brand`, without the shell).
+    PrimeNG themes are global per document, so a frame is the only way to show a brand next to
+    Refit's own theme. The editor sends unsaved changes with `postMessage` on the same origin.
+26. **Export and import happen in the browser.** The web app already shares the generator, so the
+    server only stores brands (`POST`, `PUT` and `DELETE /api/brands`).
 
 ## Notes for later phases
 

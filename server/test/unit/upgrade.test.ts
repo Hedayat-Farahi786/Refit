@@ -32,3 +32,10 @@ describe('PrimeNG releases', () => {
     expect(primeNgFor(19)).toMatchObject({ themePackage: '@primeng/themes', needsAngularAnimations: true });
   });
 });
+
+describe('theme targets', () => {
+  it('matches the theme package of every PrimeNG release', async () => {
+    const { themeTargetFor } = await import('../../src/stacks/angular/primeng.js');
+    for (const release of PRIMENG_RELEASES) expect(themeTargetFor(release).themePackage).toBe(release.themePackage);
+  });
+});

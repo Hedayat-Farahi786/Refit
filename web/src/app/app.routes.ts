@@ -15,6 +15,10 @@ export const routes: Routes = [
       { path: 'runs/:runId', loadComponent: () => import('./features/run/run-page').then((m) => m.RunPage), title: 'Run · Refit' },
     ],
   },
+  { path: 'brands', loadComponent: () => import('./features/brands/brands-page').then((m) => m.BrandsPage), title: 'Brands · Refit' },
+  { path: 'brands/:brandId', loadComponent: () => import('./features/brands/brand-editor').then((m) => m.BrandEditor), title: 'Brand · Refit' },
+  // Shown inside the Brand studio's iframe, without Refit's shell.
+  { path: 'preview/brand', loadComponent: () => import('./features/brands/brand-preview').then((m) => m.BrandPreview), title: 'Brand preview' },
   { path: 'settings', loadComponent: () => import('./features/settings/settings-page').then((m) => m.SettingsPage), title: 'Settings · Refit' },
   { path: '**', redirectTo: 'apps' },
 ];

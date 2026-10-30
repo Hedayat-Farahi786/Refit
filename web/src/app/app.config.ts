@@ -7,6 +7,7 @@ import { providePrimeNG } from 'primeng/config';
 import { routes } from './app.routes';
 import { AppState } from './core/app-state';
 import { RefitPreset } from './core/refit-theme';
+import { isPreviewPage } from './core/shell';
 import { Theme } from './core/theme';
 
 export const appConfig: ApplicationConfig = {
@@ -28,8 +29,9 @@ export const appConfig: ApplicationConfig = {
     }),
     MessageService,
     ConfirmationService,
-    // Load the state before the first screen renders.
+    // Load the state before the first screen renders. The brand preview (an iframe) needs none of it.
     provideAppInitializer(async () => {
+      if (isPreviewPage()) return;
       const state = inject(AppState);
       inject(Theme);
       await state.load();

@@ -69,15 +69,15 @@ interface TargetOption {
             <div class="panel-header"><h2 id="run-settings-title">Settings for this run</h2></div>
             <div class="panel-body grid">
               <div class="field">
-                <label for="run-brand">Brand</label>
-                <p-select inputId="run-brand" name="brand" [options]="state.brands()" optionLabel="name" optionValue="id" [(ngModel)]="settings.brandId" [fluid]="true" />
+                <label for="run-brand" id="run-brand-label">Brand</label>
+                <p-select inputId="run-brand" ariaLabelledBy="run-brand-label" name="brand" [options]="state.brands()" optionLabel="name" optionValue="id" [(ngModel)]="settings.brandId" [fluid]="true" />
                 @if (brandIsDraft()) {
                   <span class="field-hint warn-text"><i class="pi pi-exclamation-triangle" aria-hidden="true"></i> This brand is a draft with placeholder values.</span>
                 }
               </div>
               <div class="field">
-                <label for="run-target">Angular version</label>
-                <p-select inputId="run-target" name="target" [options]="targetOptions()" optionLabel="label" optionValue="value" [(ngModel)]="settings.targetAngularMajor" [fluid]="true" />
+                <label for="run-target" id="run-target-label">Angular version</label>
+                <p-select inputId="run-target" ariaLabelledBy="run-target-label" name="target" [options]="targetOptions()" optionLabel="label" optionValue="value" [(ngModel)]="settings.targetAngularMajor" [fluid]="true" />
                 <span class="field-hint">{{ targetHint() }}</span>
               </div>
               <div class="field">

@@ -80,6 +80,11 @@ export class Api {
     return this.request(this.http.put<Brand>(`/api/brands/${brand.id}`, brand));
   }
 
+  /** Creates a brand (new, duplicate or import); the server picks a unique ID from the name. */
+  createBrand(brand: Omit<Brand, 'id'> & { id?: string }): Promise<Brand> {
+    return this.request(this.http.post<Brand>('/api/brands', brand));
+  }
+
   deleteBrand(id: string): Promise<void> {
     return this.request(this.http.delete<void>(`/api/brands/${id}`));
   }

@@ -47,6 +47,14 @@ export interface ThemeTarget {
 
 export const DEFAULT_THEME_TARGET: ThemeTarget = { themePackage: '@primeuix/themes', rootFontSizePx: 14 };
 
+/** PrimeNG majors Refit installs (community, MIT releases). */
+export const SUPPORTED_PRIMENG_MAJORS = [18, 19, 20, 21] as const;
+
+/** PrimeNG 18 and 19 ship their themes as @primeng/themes; 20 and later as @primeuix/themes. */
+export function themeTargetForPrimeNg(major: number): ThemeTarget {
+  return { themePackage: major <= 19 ? '@primeng/themes' : '@primeuix/themes', rootFontSizePx: 14 };
+}
+
 export const SPACING_SCALE_PX = [4, 8, 12, 16, 24, 32, 48] as const;
 
 export function radiusScale(radius: number): PresetTokens['primitive']['borderRadius'] {
@@ -343,7 +351,7 @@ export function brandCss(input: Brand, target: ThemeTarget = DEFAULT_THEME_TARGE
     '}',
     '.brand-stat-grid {',
     '  display: grid;',
-    '  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));',
+    '  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));',
     '  gap: var(--brand-space-4);',
     '}',
     '.brand-stat {',

@@ -1,4 +1,4 @@
-import type { ThemeTarget } from '@refit/shared';
+import { themeTargetForPrimeNg, type ThemeTarget } from '@refit/shared';
 
 /** The PrimeNG packages to install for one Angular major. */
 export interface PrimeNgRelease {
@@ -31,5 +31,5 @@ export function primeNgFor(angularMajor: number): PrimeNgRelease | null {
 
 /** What the brand generator needs to know about the installed PrimeNG. */
 export function themeTargetFor(release: PrimeNgRelease): ThemeTarget {
-  return { themePackage: release.themePackage, rootFontSizePx: 14 };
+  return themeTargetForPrimeNg(release.angularMajor);
 }

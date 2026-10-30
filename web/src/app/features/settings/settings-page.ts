@@ -166,8 +166,8 @@ import { ProvidersPanel } from './providers-panel';
                 <input pInputText id="m-strong" name="strongModel" [(ngModel)]="config.claude.strongModel" class="mono" />
               </div>
               <div class="field">
-                <label for="m-effort">Claude: effort</label>
-                <p-select inputId="m-effort" name="effort" [options]="effortOptions" [(ngModel)]="config.claude.effort" [fluid]="true" />
+                <label for="m-effort" id="m-effort-label">Claude: effort</label>
+                <p-select inputId="m-effort" ariaLabelledBy="m-effort-label" name="effort" [options]="effortOptions" [(ngModel)]="config.claude.effort" [fluid]="true" />
               </div>
               <label class="switch">
                 <p-toggleswitch name="strongPages" [(ngModel)]="config.defaults.strongModelForComplexPages" ariaLabel="Use the stronger model for complex pages" />
