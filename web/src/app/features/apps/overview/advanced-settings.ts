@@ -98,7 +98,7 @@ type CommandKey = 'install' | 'build' | 'test' | 'serve';
       border-radius: var(--refit-radius-xl);
     }
     .toggle:focus-visible {
-      outline: 2px solid var(--p-primary-color);
+      outline: 2px solid var(--refit-accent);
       outline-offset: -2px;
     }
     .body {

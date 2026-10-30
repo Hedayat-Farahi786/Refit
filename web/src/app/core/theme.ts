@@ -1,25 +1,15 @@
 import { DOCUMENT } from '@angular/common';
 import { Injectable, effect, inject, signal } from '@angular/core';
-import { definePreset, usePreset } from '@primeuix/themes';
-import Aura from '@primeuix/themes/aura';
-import type { Brand } from '@refit/shared';
-import { brandCss, brandPresetTokens } from '@refit/shared';
-import { AppState } from './app-state';
 
 export type ThemeMode = 'system' | 'light' | 'dark';
 
 const STORAGE_KEY = 'refit.theme';
 
-/**
- * Light/dark mode and the brand. Refit renders itself with the same brand generator it uses for
- * target apps, so the UI always looks like the apps it produces.
- */
+/** Light and dark mode for Refit's own, fixed look (brands are for the apps Refit modernizes). */
 @Injectable({ providedIn: 'root' })
 export class Theme {
   private readonly document = inject(DOCUMENT);
-  private readonly appState = inject(AppState);
   private readonly media = this.document.defaultView?.matchMedia('(prefers-color-scheme: dark)');
-  private appliedBrandKey = '';
 
   readonly mode = signal<ThemeMode>(readStoredMode());
   readonly dark = signal(false);
@@ -29,10 +19,6 @@ export class Theme {
     effect(() => {
       this.mode();
       this.applyMode();
-    });
-    effect(() => {
-      const brand = this.appState.uiBrand();
-      if (brand) this.applyBrand(brand);
     });
   }
 
@@ -47,22 +33,6 @@ export class Theme {
 
   toggle(): void {
     this.setMode(this.dark() ? 'light' : 'dark');
-  }
-
-  /** Applies a brand to Refit itself (also used by the Brand studio preview). */
-  applyBrand(brand: Brand): void {
-    const key = JSON.stringify([brand.primary, brand.surface, brand.radius, brand.fontFamily, brand.fontImport]);
-    if (key === this.appliedBrandKey) return;
-    this.appliedBrandKey = key;
-    usePreset(definePreset(Aura, brandPresetTokens(brand)));
-    let style = this.document.getElementById('refit-brand') as HTMLStyleElement | null;
-    if (!style) {
-      style = this.document.createElement('style');
-      style.id = 'refit-brand';
-      this.document.head.prepend(style);
-    }
-    // The brand's base colors are for light pages; layering them lets Refit's dark mode win.
-    style.textContent = brandCss(brand, undefined, { layer: 'reset' });
   }
 
   private applyMode(): void {

@@ -112,10 +112,10 @@ describe('brands and settings API', () => {
     const bad = await server.call('PUT', '/api/brands/test-brand', { ...brand, primary: 'blue' });
     expect(bad.status).toBe(400);
     expect((bad.json as { error: string }).error).toMatch(/hex color/);
-    const settings = await server.call('PUT', '/api/settings', { uiBrandId: 'test-brand' });
-    expect(settings.json).toMatchObject({ uiBrandId: 'test-brand' });
+    const settings = await server.call('PUT', '/api/settings', { defaultBrandId: 'test-brand' });
+    expect(settings.json).toMatchObject({ defaultBrandId: 'test-brand' });
     await server.call('DELETE', '/api/brands/test-brand');
     const state = (await server.call('GET', '/api/state')).json as StateResponse;
-    expect(state.settings.uiBrandId).toBe('oerlikon-draft');
+    expect(state.settings.defaultBrandId).toBe('oerlikon-draft');
   });
 });

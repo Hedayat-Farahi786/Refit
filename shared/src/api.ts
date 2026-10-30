@@ -339,7 +339,8 @@ export interface RunRecord {
 }
 
 export interface UiSettings {
-  uiBrandId: string;
+  /** The brand new runs use unless another one is chosen. */
+  defaultBrandId: string;
   lastSignInAt?: string;
 }
 

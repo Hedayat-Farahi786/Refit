@@ -33,8 +33,8 @@ import { Component, input } from '@angular/core';
       width: 52px;
       height: 52px;
       border-radius: 14px;
-      background: var(--refit-accent-soft);
-      color: var(--refit-accent-text);
+      background: var(--refit-subtle);
+      color: var(--refit-text-soft);
       margin-bottom: 6px;
     }
     .icon .pi {

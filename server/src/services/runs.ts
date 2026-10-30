@@ -310,7 +310,7 @@ export class RunService {
   private settingsFor(app: AppRecord, input: Partial<RunSettings>): RunSettings {
     const config = this.ctx.getConfig();
     const brands = this.ctx.store.get((state) => state.brands);
-    const brandId = input.brandId ?? this.ctx.store.get((state) => state.settings.uiBrandId);
+    const brandId = input.brandId ?? this.ctx.store.get((state) => state.settings.defaultBrandId);
     if (!brands.some((brand) => brand.id === brandId)) throw new UserError('That brand does not exist.', 'Choose a brand from the list.');
     const major = app.scan?.angular?.major ?? null;
     let target = input.targetAngularMajor ?? (major !== null && major >= config.targetAngularMajor ? 'keep' : config.targetAngularMajor);

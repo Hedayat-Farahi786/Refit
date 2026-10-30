@@ -23,10 +23,11 @@ export class AppState {
   readonly loaded = computed(() => this.stateSignal() !== null);
   readonly apps = computed<AppRecord[]>(() => this.stateSignal()?.apps ?? []);
   readonly brands = computed<Brand[]>(() => this.stateSignal()?.brands ?? []);
-  readonly uiBrand = computed<Brand | null>(() => {
+  /** The brand new runs use unless another one is chosen. */
+  readonly defaultBrand = computed<Brand | null>(() => {
     const state = this.stateSignal();
     if (!state) return null;
-    return state.brands.find((brand) => brand.id === state.settings.uiBrandId) ?? state.brands[0] ?? null;
+    return state.brands.find((brand) => brand.id === state.settings.defaultBrandId) ?? state.brands[0] ?? null;
   });
 
   app(id: string | null | undefined): AppRecord | undefined {

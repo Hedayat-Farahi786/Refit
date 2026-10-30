@@ -1,12 +1,12 @@
 import { provideHttpClient, withFetch } from '@angular/common/http';
 import { ApplicationConfig, inject, provideAppInitializer, provideBrowserGlobalErrorListeners } from '@angular/core';
 import { provideRouter, withComponentInputBinding, withInMemoryScrolling, withRouterConfig } from '@angular/router';
-import Aura from '@primeuix/themes/aura';
 import { ConfirmationService, MessageService } from 'primeng/api';
 import { providePrimeNG } from 'primeng/config';
 
 import { routes } from './app.routes';
 import { AppState } from './core/app-state';
+import { RefitPreset } from './core/refit-theme';
 import { Theme } from './core/theme';
 
 export const appConfig: ApplicationConfig = {
@@ -22,13 +22,13 @@ export const appConfig: ApplicationConfig = {
     ),
     providePrimeNG({
       theme: {
-        preset: Aura,
+        preset: RefitPreset,
         options: { darkModeSelector: '.app-dark', cssLayer: { name: 'primeng', order: 'reset, primeng, refit' } },
       },
     }),
     MessageService,
     ConfirmationService,
-    // Load the state (and with it the brand) before the first screen renders.
+    // Load the state before the first screen renders.
     provideAppInitializer(async () => {
       const state = inject(AppState);
       inject(Theme);

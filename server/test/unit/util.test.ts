@@ -62,7 +62,7 @@ describe('StateStore', () => {
     const file = path.join(dir, 'state.json');
     const store = await StateStore.open(file, path.join(REPO_ROOT, 'brand'));
     expect(store.snapshot().brands.map((brand) => brand.id)).toEqual(['oerlikon-draft']);
-    expect(store.snapshot().settings.uiBrandId).toBe('oerlikon-draft');
+    expect(store.snapshot().settings.defaultBrandId).toBe('oerlikon-draft');
     store.update((state) => state.settings.lastSignInAt = '2026-10-30T00:00:00.000Z');
     await store.flush();
     const reopened = await StateStore.open(file, path.join(REPO_ROOT, 'brand'));

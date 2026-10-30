@@ -5,7 +5,7 @@ test.describe.configure({ mode: 'serial' });
 
 test('shows a clear first step when there are no apps', async ({ page }) => {
   await page.goto('/');
-  await expect(page.getByRole('heading', { name: 'Add your first app to get started' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Start with one app' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Apps', exact: true })).toHaveAttribute('aria-current', 'page');
 });
 
@@ -33,8 +33,8 @@ test('adds an app from a folder, scans it and edits the page list', async ({ pag
   await expect(page.getByText('Pages saved')).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Ready to modernize' })).toBeVisible();
 
-  const sidebar = page.getByRole('complementary', { name: 'Apps' });
-  await expect(sidebar.getByRole('link', { name: /Service desk/ })).toContainText('Ready');
+  const sidebar = page.getByRole('complementary', { name: 'Refit' });
+  await expect(sidebar.getByRole('link', { name: /Service desk/ }).getByRole('img', { name: 'Ready' })).toBeVisible();
 });
 
 test('explains folders that cannot be used', async ({ page }) => {

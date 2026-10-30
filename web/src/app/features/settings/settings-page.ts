@@ -22,8 +22,10 @@ import { ProvidersPanel } from './providers-panel';
   template: `
     <div class="page">
       <header class="page-head">
-        <h1>Settings</h1>
-        <p class="soft">Defaults for every run. Your changes are saved to <code>data/config.local.json</code> and override <code>refit.config.json</code>.</p>
+        <div>
+          <h1 class="display">Settings</h1>
+          <p class="lede">Defaults for every run. Changes are saved to <code>data/config.local.json</code> and override <code>refit.config.json</code>.</p>
+        </div>
       </header>
 
       <section class="panel" aria-labelledby="appearance-title">
@@ -32,11 +34,6 @@ import { ProvidersPanel } from './providers-panel';
           <div class="field">
             <span class="field-label" id="theme-label">Theme</span>
             <p-selectbutton [options]="themeOptions" optionLabel="label" optionValue="value" [ngModel]="theme.mode()" (ngModelChange)="theme.setMode($event)" [allowEmpty]="false" ariaLabelledBy="theme-label" />
-          </div>
-          <div class="field">
-            <label for="ui-brand">Brand for Refit itself</label>
-            <p-select inputId="ui-brand" [options]="state.brands()" optionLabel="name" optionValue="id" [ngModel]="state.uiBrand()?.id" (ngModelChange)="setUiBrand($event)" [fluid]="true" />
-            <span class="field-hint">Refit renders itself with the same brand generator it uses for your apps.</span>
           </div>
         </div>
       </section>
@@ -234,19 +231,6 @@ import { ProvidersPanel } from './providers-panel';
     :host {
       flex: 1;
     }
-    .page {
-      max-width: 1040px;
-      margin: 0 auto;
-      padding: 32px 24px 80px;
-      display: flex;
-      flex-direction: column;
-      gap: 24px;
-    }
-    .page-head {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
     .grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -427,15 +411,6 @@ export class SettingsPage {
       this.notify.error(error);
     } finally {
       this.signInBusy.set(false);
-    }
-  }
-
-  protected async setUiBrand(id: string): Promise<void> {
-    try {
-      await this.api.saveSettings({ uiBrandId: id });
-      this.state.refresh();
-    } catch (error) {
-      this.notify.error(error);
     }
   }
 

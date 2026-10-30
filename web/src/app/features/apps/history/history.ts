@@ -56,7 +56,7 @@ import { StatusChip } from '../../../ui/status-chip';
       cursor: pointer;
     }
     .row:focus-visible {
-      outline: 2px solid var(--p-primary-color);
+      outline: 2px solid var(--refit-accent);
       outline-offset: -2px;
     }
   `,

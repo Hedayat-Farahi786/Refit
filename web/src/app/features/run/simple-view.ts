@@ -203,7 +203,7 @@ const STEP_ICON: Record<StepState['status'], string> = {
       cursor: default;
     }
     .thumbs:focus-visible {
-      outline: 2px solid var(--p-primary-color);
+      outline: 2px solid var(--refit-accent);
       outline-offset: 3px;
     }
     .thumbs:not(:disabled):hover img {

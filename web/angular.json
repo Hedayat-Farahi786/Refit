@@ -33,6 +33,8 @@
             ],
             "styles": [
               "primeicons/primeicons.css",
+              "@fontsource-variable/inter/index.css",
+              "@fontsource-variable/source-serif-4/index.css",
               "src/styles.scss"
             ],
             "outputPath": "dist/web"

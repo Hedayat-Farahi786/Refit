@@ -156,7 +156,7 @@ const SEVERITY_ICON: Record<Finding['severity'], string> = {
       font-size: 0.875rem;
     }
     .notes-toggle:focus-visible {
-      outline: 2px solid var(--p-primary-color);
+      outline: 2px solid var(--refit-accent);
       outline-offset: -2px;
     }
     .notes-list .finding {

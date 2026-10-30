@@ -242,7 +242,7 @@ const TOOL_ICONS: Record<string, string> = {
       background: var(--refit-accent-soft);
     }
     .file:focus-visible {
-      outline: 2px solid var(--p-primary-color);
+      outline: 2px solid var(--refit-accent);
     }
     .path {
       flex: 1;

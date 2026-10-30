@@ -174,12 +174,12 @@ interface TargetOption {
       border-color: var(--refit-border-strong);
     }
     .provider:has(input:focus-visible) {
-      outline: 2px solid var(--p-primary-color);
+      outline: 2px solid var(--refit-accent);
       outline-offset: 2px;
     }
     .provider.selected {
-      border-color: var(--p-primary-color);
-      background: var(--refit-accent-soft);
+      border-color: var(--refit-text);
+      box-shadow: inset 0 0 0 1px var(--refit-text);
     }
     .provider.disabled {
       cursor: not-allowed;
@@ -198,7 +198,7 @@ interface TargetOption {
       flex: none;
     }
     .selected .radio {
-      border: 5px solid var(--p-primary-color);
+      border: 5px solid var(--refit-text);
     }
     .switch {
       display: flex;
@@ -327,7 +327,7 @@ export class Modernize {
     const major = app.scan?.angular?.major ?? null;
     this.settings = {
       ...this.settings,
-      brandId: state.settings.uiBrandId,
+      brandId: state.settings.defaultBrandId,
       targetAngularMajor: major !== null && major < config.targetAngularMajor && config.defaults.upgradeAngular ? config.targetAngularMajor : 'keep',
       polishRounds: config.defaults.polishRounds,
       runTests: config.defaults.runTests && Boolean(app.scan?.commands.test),

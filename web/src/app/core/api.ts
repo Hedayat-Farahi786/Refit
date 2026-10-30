@@ -84,7 +84,7 @@ export class Api {
     return this.request(this.http.delete<void>(`/api/brands/${id}`));
   }
 
-  saveSettings(settings: Pick<UiSettings, 'uiBrandId'>): Promise<UiSettings> {
+  saveSettings(settings: Pick<UiSettings, 'defaultBrandId'>): Promise<UiSettings> {
     return this.request(this.http.put<UiSettings>('/api/settings', settings));
   }
 

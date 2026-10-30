@@ -25,7 +25,7 @@ import { ReadinessChip } from '../../ui/readiness-chip';
       <header class="head">
         <div class="title-row">
           <div class="title-block">
-            <h1 class="truncate">{{ app.name }}</h1>
+            <h1 class="display truncate">{{ app.name }}</h1>
             <div class="source cluster">
               <i class="pi muted" [class]="app.source.kind === 'local' ? 'pi-folder' : 'pi-link'" aria-hidden="true"></i>
               <span class="mono small soft truncate">{{ sourceText() }}</span>
@@ -86,8 +86,9 @@ import { ReadinessChip } from '../../ui/readiness-chip';
       z-index: 5;
     }
     .head {
-      padding: 28px 32px 0;
-      background: var(--refit-panel);
+      /* Aligns with the centered content column at any width. */
+      --inline: max(40px, calc((100% - var(--refit-content-width)) / 2 + 40px));
+      padding: 36px var(--inline) 0;
       border-bottom: 1px solid var(--refit-border);
     }
     .title-row {
@@ -114,15 +115,15 @@ import { ReadinessChip } from '../../ui/readiness-chip';
     }
     .tabs {
       display: flex;
-      gap: 4px;
-      margin-top: 20px;
+      gap: 20px;
+      margin-top: 24px;
       overflow-x: auto;
     }
     .tabs a {
       display: inline-flex;
       align-items: center;
       gap: 8px;
-      padding: 10px 14px;
+      padding: 10px 2px;
       color: var(--refit-text-soft);
       text-decoration: none;
       font-weight: 500;
@@ -135,7 +136,7 @@ import { ReadinessChip } from '../../ui/readiness-chip';
     }
     .tabs a.active {
       color: var(--refit-text);
-      border-bottom-color: var(--p-primary-color);
+      border-bottom-color: var(--refit-text);
     }
     .tabs .pi {
       font-size: 0.9rem;
@@ -144,12 +145,14 @@ import { ReadinessChip } from '../../ui/readiness-chip';
       width: 7px;
       height: 7px;
       border-radius: 50%;
-      background: var(--p-primary-color);
+      background: var(--refit-accent);
       box-shadow: 0 0 0 3px var(--refit-accent-soft);
     }
     .body {
-      padding: 28px 32px 64px;
-      max-width: 1240px;
+      width: 100%;
+      max-width: var(--refit-content-width);
+      margin: 0 auto;
+      padding: 32px 40px 96px;
     }
     .scanned-narrow {
       display: none;
@@ -165,6 +168,9 @@ import { ReadinessChip } from '../../ui/readiness-chip';
     @media (max-width: 640px) {
       .head {
         padding: 20px 16px 0;
+      }
+      .tabs {
+        gap: 14px;
       }
       .body {
         padding: 20px 16px 48px;

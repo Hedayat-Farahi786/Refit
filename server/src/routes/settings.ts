@@ -60,19 +60,19 @@ export function registerSettingsRoutes(app: FastifyInstance, ctx: ServerContext,
     if (brands.length === 1) throw new UserError('Refit needs at least one brand.', 'Create another brand before deleting this one.', 409);
     ctx.store.update((state) => {
       state.brands = state.brands.filter((brand) => brand.id !== request.params.id);
-      if (state.settings.uiBrandId === request.params.id) state.settings.uiBrandId = state.brands[0]!.id;
+      if (state.settings.defaultBrandId === request.params.id) state.settings.defaultBrandId = state.brands[0]!.id;
     });
     ctx.bus.changed('brand-deleted');
     return reply.code(204).send();
   });
 
   app.put('/api/settings', async (request) => {
-    const body = parseBody(z.object({ uiBrandId: z.string() }), request.body);
-    if (!ctx.store.get((state) => state.brands.some((brand) => brand.id === body.uiBrandId))) {
+    const body = parseBody(z.object({ defaultBrandId: z.string() }), request.body);
+    if (!ctx.store.get((state) => state.brands.some((brand) => brand.id === body.defaultBrandId))) {
       throw new UserError('That brand does not exist.', 'Choose one of the brands in the list.');
     }
     const settings = ctx.store.update((state) => {
-      state.settings.uiBrandId = body.uiBrandId;
+      state.settings.defaultBrandId = body.defaultBrandId;
       return state.settings;
     });
     ctx.bus.changed('settings-saved');

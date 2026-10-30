@@ -12,7 +12,7 @@ export interface PersistedState {
   settings: UiSettings;
 }
 
-const EMPTY: PersistedState = { version: 1, apps: [], runs: [], brands: [], settings: { uiBrandId: '' } };
+const EMPTY: PersistedState = { version: 1, apps: [], runs: [], brands: [], settings: { defaultBrandId: '' } };
 
 /**
  * Refit's single-user state in data/state.json. All changes go through `update`, which applies
@@ -54,8 +54,14 @@ export class StateStore {
     if (this.state.brands.length === 0) {
       this.state.brands = await loadStarterBrands(starterBrandsDir);
     }
-    if (!this.state.brands.some((brand) => brand.id === this.state.settings.uiBrandId)) {
-      this.state.settings.uiBrandId = this.state.brands[0]?.id ?? '';
+    // Before Refit had its own fixed look, this setting was "uiBrandId".
+    const legacy = this.state.settings as { uiBrandId?: string };
+    if (legacy.uiBrandId !== undefined) {
+      this.state.settings.defaultBrandId ??= legacy.uiBrandId;
+      delete legacy.uiBrandId;
+    }
+    if (!this.state.brands.some((brand) => brand.id === this.state.settings.defaultBrandId)) {
+      this.state.settings.defaultBrandId = this.state.brands[0]?.id ?? '';
     }
     await this.flush();
   }
