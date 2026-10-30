@@ -54,7 +54,7 @@ const TOOL_ICONS: Record<string, string> = {
           <span class="tiny muted nowrap">{{ visible().length }} lines</span>
           <p-button icon="pi pi-copy" [text]="true" severity="secondary" size="small" pTooltip="Copy the visible lines" ariaLabel="Copy the visible lines" (onClick)="copy()" />
         </div>
-        <cdk-virtual-scroll-viewport #viewport [itemSize]="rowHeight" class="log" (scrolledIndexChange)="onScroll()" role="log" aria-live="off" aria-label="Run log">
+        <cdk-virtual-scroll-viewport #viewport [itemSize]="rowHeight" class="log" (scrolledIndexChange)="onScroll()" role="log" aria-live="off" aria-label="Run log" tabindex="0">
           <div *cdkVirtualFor="let entry of visible(); trackBy: trackSeq" class="row" [class]="entry.kind">
             <span class="time">{{ entry.ts.slice(11, 19) }}</span>
             <span class="badge" [attr.title]="entry.source">{{ badge(entry) }}</span>

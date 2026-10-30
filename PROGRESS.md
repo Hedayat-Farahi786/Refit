@@ -14,7 +14,7 @@ Living status of the build. The plan and its reasoning are in [PLAN.md](PLAN.md)
 | Design and brands (asked for during phase 5) | Done |
 | 6. Upgrade and design system | Done |
 | 7. Polish loop and delivery | Done |
-| 8. Finish | Next |
+| 8. Finish | Done |
 
 ## Phase 1: Foundation (done)
 
@@ -389,6 +389,32 @@ What works:
 
 How to try it: finish a dry run, then choose **Create pull request** on the run page.
 
+## Phase 8: Finish (done)
+
+What works:
+
+- **Accessibility (WCAG 2.1 AA).** Every screen is audited with axe (`@axe-core/playwright`) in
+  light and dark mode. The audit covers Apps, Overview, Agent review, Modernize, History, Brands, the
+  brand editor, Settings, both run views and the pull request result. The Oerlikon brand preview is
+  checked on its own. Fixes:
+  - Refit's muted and placeholder text, the success and warning chips, and the secondary and danger
+    outlined/text buttons now meet 4.5:1 in both modes.
+  - Generated brand presets darken the toggle button text (it was 4.34:1 on the default surface).
+    A unit test checks the default text colors of every neutral family.
+  - Every select has an accessible name. The developer log is keyboard-scrollable. The thumbnail
+    buttons' names match their visible text. A disabled provider is shown in soft text, not faded.
+- **Run page polish.** An app folder without a remote is not a failure: the pull request panel says
+  "Bring the branch into your folder" with the fetch commands, and no longer offers a pointless
+  "Try again". All pull request states share one neutral panel; only the icon carries the color.
+- **README** rewritten for people setting Refit up on Windows: install, start, providers, Microsoft
+  sign-in, the first app, dry and real runs, results and pull requests, costs, troubleshooting and
+  security. `.env.example` marks Copilot as planned.
+- **Tests:** 258 unit tests, the integration suite, and the end-to-end suite with the new
+  accessibility audits.
+
+How to try it: follow [README.md](README.md) from section 1. To repeat the accessibility audit, run
+`npx playwright test -c web/e2e/playwright.config.ts a11y`.
+
 ## Decisions and differences from the spec
 
 1. **PrimeNG 21 and Angular 21, not the newest versions.** PrimeNG 22, `@primeuix/themes` 3 and
@@ -473,6 +499,8 @@ How to try it: finish a dry run, then choose **Create pull request** on the run 
     branch keeps one commit per page, as the spec asks.
 30. **Pull requests for apps without a remote** (a local folder) get the exact commands to fetch the
     branch into the user's own repository, instead of an error.
+31. **Accessibility is tested, not assumed.** The axe audit runs in the end-to-end suite on every
+    screen, in both color modes, so a contrast or labeling regression fails CI.
 
 ## Notes for later phases
 

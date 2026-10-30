@@ -183,7 +183,14 @@ interface TargetOption {
     }
     .provider.disabled {
       cursor: not-allowed;
-      opacity: 0.7;
+      background: var(--refit-subtle);
+    }
+    /* Quieter, but still readable: the reason is what people need to read. */
+    .provider.disabled .provider-head {
+      color: var(--refit-text-soft);
+    }
+    .provider.disabled .radio {
+      border-style: dashed;
     }
     .provider-head {
       display: flex;

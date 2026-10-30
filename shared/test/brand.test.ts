@@ -17,6 +17,7 @@ import {
   DEFAULT_STATUS_COLORS,
   normalizeBrand,
   primaryLooksLikeDanger,
+  SURFACE_PALETTES,
   type Brand,
 } from '../src/index.js';
 import { readFileSync } from 'node:fs';
@@ -143,6 +144,19 @@ describe('preset tokens', () => {
     const compact = brandPresetTokens({ ...oerlikon, density: 'compact' });
     expect(compact.semantic.formField).toMatchObject({ paddingX: '0.625rem', paddingY: '0.375rem' });
     expect(compact.components['datatable']).toMatchObject({ bodyCell: { padding: '0.5rem 0.75rem' } });
+  });
+});
+
+describe('accessible defaults for every neutral family', () => {
+  it('keeps unselected segmented-button labels at 4.5:1 or more', () => {
+    for (const family of ['slate', 'zinc', 'neutral', 'stone'] as const) {
+      const tokens = brandPresetTokens({ ...oerlikon, surface: family });
+      expect(tokens.components['togglebutton']).toMatchObject({ colorScheme: { light: { root: { color: '{surface.600}' } } } });
+      const palette = SURFACE_PALETTES[family];
+      expect(contrastRatio(palette['600'], palette['100']), family).toBeGreaterThanOrEqual(4.5);
+      // Muted text (surface 500) on the page background (surface 50) and on white.
+      expect(contrastRatio(palette['500'], palette['50']), family).toBeGreaterThanOrEqual(4.5);
+    }
   });
 });
 

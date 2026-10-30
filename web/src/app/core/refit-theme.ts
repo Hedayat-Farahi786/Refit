@@ -52,11 +52,12 @@ export const RefitPreset = definePreset(Aura, {
           hoverBorderColor: '{surface.400}',
           focusBorderColor: '{blue.500}',
           color: '{surface.900}',
-          placeholderColor: '{surface.500}',
+          placeholderColor: '#77726a',
           iconColor: '{surface.500}',
           shadow: '0 1px 2px 0 rgb(21 20 18 / 0.04)',
         },
-        text: { color: '{surface.900}', hoverColor: '{surface.950}', mutedColor: '{surface.500}', hoverMutedColor: '{surface.600}' },
+        // Muted text reaches 4.5:1 on white and on the warm greys (WCAG AA).
+        text: { color: '{surface.900}', hoverColor: '{surface.950}', mutedColor: '#6b665e', hoverMutedColor: '{surface.700}' },
         content: { background: '{surface.0}', hoverBackground: '{surface.100}', borderColor: '{surface.200}', color: '{text.color}', hoverColor: '{text.hover.color}' },
       },
       dark: {
@@ -80,6 +81,17 @@ export const RefitPreset = definePreset(Aura, {
   components: {
     button: {
       root: { label: { fontWeight: '500' }, sm: { fontSize: '0.875rem', paddingX: '0.75rem', paddingY: '0.4rem' } },
+      // Aura's quieter button labels (surface 500, red 500) fall below 4.5:1 on Refit's surfaces.
+      colorScheme: {
+        light: {
+          outlined: { secondary: { color: '{surface.700}', borderColor: '{surface.300}' }, danger: { color: '{red.700}', borderColor: '{red.200}' } },
+          text: { secondary: { color: '{surface.700}' }, danger: { color: '{red.700}' } },
+        },
+        dark: {
+          outlined: { secondary: { color: '{surface.300}', borderColor: '{surface.700}' }, danger: { color: '{red.300}' } },
+          text: { secondary: { color: '{surface.300}' }, danger: { color: '{red.300}' } },
+        },
+      },
     },
     tooltip: {
       root: { maxWidth: '18rem', padding: '0.4rem 0.6rem', borderRadius: '{border.radius.sm}' },

@@ -63,13 +63,14 @@
     --refit-border-strong: var(--p-surface-300);
     --refit-text: var(--p-surface-900);
     --refit-text-soft: var(--p-surface-700);
-    --refit-muted: var(--p-surface-500);
+    /* Not a palette step: the lightest warm grey that still reaches 4.5:1 on every light surface. */
+    --refit-muted: #6b665e;
     --refit-accent: var(--p-blue-600);
     --refit-accent-soft: color-mix(in srgb, var(--p-blue-500) 10%, transparent);
     --refit-accent-text: var(--p-blue-700);
-    --refit-success: var(--p-green-700);
+    --refit-success: var(--p-green-800);
     --refit-success-soft: color-mix(in srgb, var(--p-green-500) 12%, transparent);
-    --refit-warn: var(--p-amber-700);
+    --refit-warn: var(--p-amber-800);
     --refit-warn-soft: color-mix(in srgb, var(--p-amber-500) 14%, transparent);
     --refit-danger: var(--p-red-700);
     --refit-danger-soft: color-mix(in srgb, var(--p-red-500) 10%, transparent);

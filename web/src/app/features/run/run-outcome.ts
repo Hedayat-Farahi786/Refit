@@ -66,10 +66,10 @@ interface Tile {
       </div>
 
       @if (pullRequest(); as pr) {
-        <div class="pr" [class.failed]="!pr.pushed" role="status">
+        <div class="pr" [class]="prState().tone" role="status">
           <div class="pr-head">
-            <i class="pi" [class]="pr.created ? 'pi-check-circle' : pr.pushed ? 'pi-cloud-upload' : 'pi-exclamation-triangle'" aria-hidden="true"></i>
-            <strong>{{ pr.created ? 'Pull request created' : pr.pushed ? 'Branch pushed' : 'Not pushed yet' }}</strong>
+            <i class="pi" [class]="prState().icon" aria-hidden="true"></i>
+            <strong>{{ prState().title }}</strong>
           </div>
           <p class="soft small">{{ pr.message }}</p>
           @if (pr.commands.length) {
@@ -123,25 +123,26 @@ interface Tile {
     .pr {
       margin: 0 24px 16px;
       padding: 14px 16px;
+      border: 1px solid var(--refit-border);
       border-radius: var(--refit-radius-lg);
-      background: var(--refit-success-soft);
+      background: var(--refit-subtle);
       display: flex;
       flex-direction: column;
       gap: 10px;
-    }
-    .pr.failed {
-      background: var(--refit-warn-soft);
     }
     .pr-head {
       display: flex;
       align-items: center;
       gap: 8px;
     }
-    .pr-head .pi {
+    .pr.good .pr-head .pi {
       color: var(--refit-success);
     }
-    .pr.failed .pr-head .pi {
+    .pr.warn .pr-head .pi {
       color: var(--refit-warn);
+    }
+    .pr.neutral .pr-head .pi {
+      color: var(--refit-text-soft);
     }
     .commands {
       display: flex;
@@ -327,8 +328,22 @@ export class RunOutcome {
 
   /** What "Create pull request" did: from this visit, or saved on the run. */
   protected readonly pullRequest = computed<PullRequestResult | null>(() => this.pushResult() ?? this.run().pullRequest ?? null);
+  /** A folder without a remote is not a failure: the branch is fetched into it instead. */
+  protected readonly prState = computed(() => {
+    const pr = this.pullRequest();
+    if (pr?.created) return { tone: 'good', icon: 'pi-check-circle', title: 'Pull request created' };
+    if (pr?.pushed) return { tone: 'good', icon: 'pi-cloud-upload', title: 'Branch pushed' };
+    if (pr?.host === 'none') return { tone: 'neutral', icon: 'pi-download', title: 'Bring the branch into your folder' };
+    return { tone: 'warn', icon: 'pi-exclamation-triangle', title: 'Not pushed yet' };
+  });
   protected readonly canPush = computed(
-    () => this.run().status === 'done' && !!this.run().branch && !!this.run().workspace && !this.run().workspaceRemoved && !this.pullRequest()?.pushed,
+    () =>
+      this.run().status === 'done' &&
+      !!this.run().branch &&
+      !!this.run().workspace &&
+      !this.run().workspaceRemoved &&
+      !this.pullRequest()?.pushed &&
+      this.pullRequest()?.host !== 'none',
   );
   private readonly pushResult = signal<PullRequestResult | null>(null);
   protected readonly pushing = signal(false);

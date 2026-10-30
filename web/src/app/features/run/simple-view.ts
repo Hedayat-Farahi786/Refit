@@ -56,24 +56,22 @@ const STEP_ICON: Record<StepState['status'], string> = {
                   </div>
                   <app-status-chip [page]="page.status" />
                 </div>
-                <button type="button" class="thumbs" (click)="openCompare(page)" [disabled]="!page.shots.before.desktop" [attr.aria-label]="'Compare before and after for ' + page.name">
-                  <figure>
+                <div class="thumb-block">
+                  <button type="button" class="thumbs" (click)="openCompare(page)" [disabled]="!page.shots.before.desktop" [attr.aria-label]="'Compare before and after for ' + page.name">
                     @if (page.shots.before.desktop; as src) {
                       <img [src]="src" alt="" loading="lazy" />
                     } @else {
-                      <div class="thumb-empty" aria-hidden="true"><i class="pi pi-image"></i></div>
+                      <span class="thumb-empty" aria-hidden="true"><i class="pi pi-image"></i></span>
                     }
-                    <figcaption class="tiny muted">Before</figcaption>
-                  </figure>
-                  <figure>
                     @if (page.shots.after.desktop; as src) {
                       <img [src]="src" alt="" loading="lazy" />
                     } @else {
-                      <div class="thumb-empty" aria-hidden="true"><i class="pi" [class]="page.status === 'working' ? 'pi-spin pi-spinner' : 'pi-image'"></i></div>
+                      <span class="thumb-empty" aria-hidden="true"><i class="pi" [class]="page.status === 'working' ? 'pi-spin pi-spinner' : 'pi-image'"></i></span>
                     }
-                    <figcaption class="tiny muted">After</figcaption>
-                  </figure>
-                </button>
+                  </button>
+                  <!-- Captions sit outside the button so its name is exactly what it does (WCAG 2.5.3). -->
+                  <div class="captions tiny muted" aria-hidden="true"><span>Before</span><span>After</span></div>
+                </div>
                 <ul class="changes small" role="list">
                   @for (change of changesOf(page); track $index) {
                     <li>{{ change }}</li>
@@ -207,18 +205,22 @@ const STEP_ICON: Record<StepState['status'], string> = {
       outline-offset: 3px;
     }
     .thumbs:not(:disabled):hover img {
-      border-color: var(--p-primary-color);
+      border-color: var(--refit-border-strong);
     }
     .compare {
       overflow: hidden;
     }
-    figure {
-      margin: 0;
+    .thumb-block {
       display: flex;
       flex-direction: column;
       gap: 4px;
     }
-    figure img,
+    .captions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    .thumbs img,
     .thumb-empty {
       width: 100%;
       aspect-ratio: 16 / 10;

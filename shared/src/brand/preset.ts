@@ -163,6 +163,8 @@ export function brandPresetTokens(input: Brand): PresetTokens {
       },
       card: { root: { borderRadius: '{border.radius.lg}', shadow: '0 1px 2px 0 rgb(0 0 0 / 0.05)' } },
       tag: { root: { fontWeight: '600', borderRadius: '{border.radius.sm}' } },
+      // Aura draws unselected segments in surface 500 on surface 100, under 4.5:1 for some neutrals.
+      togglebutton: { colorScheme: { light: { root: { color: '{surface.600}', hoverColor: '{surface.800}' }, icon: { color: '{surface.600}' } } } },
     },
   };
 }
