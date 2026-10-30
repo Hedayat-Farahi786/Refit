@@ -8,6 +8,8 @@ export default defineConfig({
           name: 'unit',
           include: ['shared/test/**/*.test.ts', 'server/test/unit/**/*.test.ts'],
           environment: 'node',
+          // Some unit tests clone small git repos; Windows and macOS runners are slower at that.
+          testTimeout: 60_000,
         },
       },
       {

@@ -37,7 +37,12 @@ async function snapshotLocal(folder: string, target: string, signal?: AbortSigna
     // Not a git repo: scan the folder in place (read-only). Modernizing it is blocked by a finding.
     return { repoDir: absolute, appDir: '', files: await walkFiles(absolute), git: { isRepo: false }, uncommitted: 0 };
   }
-  const appDir = path.relative(path.resolve(root), absolute).split(path.sep).join('/');
+  // Compare real paths: git reports /private/var/... on macOS where the user typed /var/...,
+  // and long names on Windows where the path may contain 8.3 short names like RUNNER~1.
+  const appDir = path.relative(await fs.realpath(root), await fs.realpath(absolute)).split(path.sep).join('/');
+  if (appDir.startsWith('..')) {
+    throw new UserError(`Refit could not work out where ${absolute} sits inside its git repository.`, 'Add the app using the path of the repository folder itself.');
+  }
   const [git, uncommitted] = await Promise.all([gitInfo(absolute), countUncommitted(absolute)]);
   if (!git.commit) {
     throw new UserError('The git repository has no commits yet.', 'Commit the app first (git add -A && git commit -m "Initial commit"), then scan again.');
