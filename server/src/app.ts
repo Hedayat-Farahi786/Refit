@@ -31,6 +31,8 @@ export interface ServerOptions {
   providers?: ProviderRegistry;
   /** Extra hosts that count as a sign-in page (tests use a mock identity provider). */
   signInHosts?: readonly string[];
+  /** Replaces the GitHub CLI for pull requests ("" means not installed). Tests use this. */
+  ghCommand?: string;
 }
 
 export const DEV_WEB_PORT = 4701;
@@ -72,7 +74,7 @@ export async function createServer(ctx: ServerContext, options: ServerOptions = 
       ctx.bus.changed('sign-in');
     }
   });
-  const runs = new RunService(ctx, providers, apps, browser, options.signInHosts);
+  const runs = new RunService(ctx, providers, apps, browser, options.signInHosts, options.ghCommand);
   const services: Services = { apps, runs, providers, browser };
   app.addHook('onClose', async () => browser.shutdown());
 

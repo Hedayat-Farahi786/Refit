@@ -24,6 +24,15 @@ export async function createBranch(repo: string, branch: string): Promise<void> 
 }
 
 /** Keeps Refit's own working folder (.refit/) out of every commit and diff. */
+/**
+ * Turns all commits after `base` into one commit with this message (the changes stay the same).
+ * Returns the new commit, or null when there is nothing to commit.
+ */
+export async function squashSince(repo: string, base: string, message: string): Promise<string | null> {
+  await git(repo, ['reset', '--soft', base]);
+  return commitAll(repo, message);
+}
+
 export async function excludeFromGit(repo: string, pattern: string): Promise<void> {
   const exclude = path.join(repo, '.git', 'info', 'exclude');
   await fs.mkdir(path.dirname(exclude), { recursive: true });

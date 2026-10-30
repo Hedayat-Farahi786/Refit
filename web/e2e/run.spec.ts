@@ -61,6 +61,16 @@ test('starts a dry run and follows it to the end in simple and developer view', 
   await page.getByRole('button', { name: 'Side by side' }).click();
   await expect(stage.getByRole('img', { name: 'Before: Requests' })).toBeVisible();
 
+  // Create pull request: only on a click, after a confirmation. This app folder has no remote,
+  // so Refit explains how to bring the branch into it instead of pushing anywhere.
+  await page.getByRole('button', { name: 'Create pull request' }).click();
+  await expect(page.getByText(/Refit pushes the branch refit\/modernize-/)).toBeVisible();
+  await page.getByRole('button', { name: 'Push and create' }).click();
+  await expect(page.getByText('Not pushed yet')).toBeVisible();
+  await expect(page.getByText(/has no remote to push to/)).toBeVisible();
+  await expect(page.locator('.commands')).toContainText(`git fetch`);
+  await expect(page.getByRole('button', { name: 'Try again' })).toBeVisible();
+
   await page.getByRole('link', { name: 'History' }).click();
   await expect(page.getByRole('cell').getByText('Ready for review')).toBeVisible();
 });

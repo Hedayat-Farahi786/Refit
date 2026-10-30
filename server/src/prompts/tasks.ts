@@ -139,3 +139,39 @@ export function foundationPrompt(input: FoundationPromptInput): string {
     'Run the build until it passes. Finish with the summary and the JSON report.',
   ].join('\n');
 }
+
+export interface PolishPromptInput {
+  name: string;
+  route: string;
+  files: string[];
+  round: number;
+  rounds: number;
+  /** Screenshots of the page now (relative to the working folder). */
+  afterShots: string[];
+  /** Screenshots from before the modernization: everything on them must still be there. */
+  beforeShots: string[];
+  buildCommand: string;
+  designSystem: string;
+}
+
+export function polishPrompt(input: PolishPromptInput): string {
+  return [
+    `Task: design review ${input.round} of ${input.rounds} for the "${input.name}" page (route ${input.route}).`,
+    '',
+    'You are a fresh reviewer: the page was just modernized by someone else. Compare it with the UI checklist and the brand guide, then fix what does not meet them.',
+    '',
+    input.afterShots.length > 0 ? ['The page now:', ...input.afterShots.map((shot) => `- ${shot}`)].join('\n') : 'There are no screenshots of the page now; read its template instead.',
+    input.beforeShots.length > 0 ? ['Before the modernization (every action, field and section here must still exist):', ...input.beforeShots.map((shot) => `- ${shot}`)].join('\n') : '',
+    '',
+    'Files you may change:',
+    ...input.files.map((file) => `- ${file}`),
+    '',
+    `Design system: ${input.designSystem}`,
+    `Build command: ${input.buildCommand}`,
+    '',
+    'Change only what the checklist asks for: spacing, alignment, hierarchy, states, responsiveness, accessibility and consistency with the brand. Do not change behavior, data loading or business wording. If everything already meets the checklist, change nothing and say so.',
+    'Run the build, then finish with the summary and the JSON report.',
+  ]
+    .filter((line, index, all) => !(line === '' && all[index - 1] === ''))
+    .join('\n');
+}

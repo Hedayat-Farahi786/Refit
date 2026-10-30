@@ -1,6 +1,6 @@
 import { Component, computed, inject, input, signal } from '@angular/core';
 import { Router } from '@angular/router';
-import type { RunRecord } from '@refit/shared';
+import type { PullRequestResult, RunRecord } from '@refit/shared';
 import { ConfirmationService } from 'primeng/api';
 import { Button } from 'primeng/button';
 import { Dialog } from 'primeng/dialog';
@@ -65,7 +65,42 @@ interface Tile {
         }
       </div>
 
+      @if (pullRequest(); as pr) {
+        <div class="pr" [class.failed]="!pr.pushed" role="status">
+          <div class="pr-head">
+            <i class="pi" [class]="pr.created ? 'pi-check-circle' : pr.pushed ? 'pi-cloud-upload' : 'pi-exclamation-triangle'" aria-hidden="true"></i>
+            <strong>{{ pr.created ? 'Pull request created' : pr.pushed ? 'Branch pushed' : 'Not pushed yet' }}</strong>
+          </div>
+          <p class="soft small">{{ pr.message }}</p>
+          @if (pr.commands.length) {
+            <div class="commands">
+              <pre><code>{{ pr.commands.join('\n') }}</code></pre>
+              <app-copy-button [value]="pr.commands.join('\n')" label="Copy the commands" />
+            </div>
+          }
+          <div class="cluster">
+            @if (pr.url) {
+              <a class="p-button p-button-sm link-button" [href]="pr.url" target="_blank" rel="noopener">
+                <i class="pi pi-external-link" aria-hidden="true"></i>{{ pr.created ? 'Open the pull request' : 'Open the create page' }}
+              </a>
+            }
+            @if (!pr.created) {
+              <app-copy-button [value]="pr.description" label="Copy the description" [showLabel]="true" />
+            }
+          </div>
+        </div>
+      }
+
       <div class="actions cluster">
+        @if (canPush()) {
+          <p-button
+            [label]="pullRequest()?.pushed === false ? 'Try again' : 'Create pull request'"
+            icon="pi pi-share-alt"
+            size="small"
+            [loading]="pushing()"
+            (onClick)="createPullRequest()"
+          />
+        }
         @if (run().result?.reportPath) {
           <p-button label="View report" icon="pi pi-file" severity="secondary" [outlined]="true" size="small" (onClick)="openReport()" />
         }
@@ -84,6 +119,50 @@ interface Tile {
     .outcome {
       margin-bottom: 24px;
       overflow: hidden;
+    }
+    .pr {
+      margin: 0 24px 16px;
+      padding: 14px 16px;
+      border-radius: var(--refit-radius-lg);
+      background: var(--refit-success-soft);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .pr.failed {
+      background: var(--refit-warn-soft);
+    }
+    .pr-head {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .pr-head .pi {
+      color: var(--refit-success);
+    }
+    .pr.failed .pr-head .pi {
+      color: var(--refit-warn);
+    }
+    .commands {
+      display: flex;
+      align-items: flex-start;
+      gap: 6px;
+    }
+    .commands pre {
+      flex: 1;
+      margin: 0;
+      padding: 10px 12px;
+      overflow-x: auto;
+      border-radius: var(--refit-radius);
+      background: var(--refit-panel);
+      font-family: var(--refit-mono);
+      font-size: 0.8rem;
+    }
+    .link-button {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      text-decoration: none;
     }
     .banner {
       display: flex;
@@ -217,9 +296,11 @@ export class RunOutcome {
     }
   });
 
-  protected readonly subline = computed(() =>
-    this.run().status === 'done' ? 'Everything is committed on the branch below. Nothing was pushed; review the changes before creating a pull request.' : '',
-  );
+  protected readonly subline = computed(() => {
+    if (this.run().status !== 'done') return '';
+    if (this.pullRequest()?.pushed) return 'Everything is committed on the branch below, and the branch is pushed. Nothing was merged.';
+    return 'Everything is committed on the branch below. Nothing was pushed; review the changes before creating a pull request.';
+  });
 
   protected readonly tiles = computed<Tile[]>(() => {
     const result = this.run().result;
@@ -243,6 +324,41 @@ export class RunOutcome {
     if (result.protectedReverts > 0) tiles.push({ label: 'Protected reverts', value: String(result.protectedReverts), tone: 'warn' });
     return tiles;
   });
+
+  /** What "Create pull request" did: from this visit, or saved on the run. */
+  protected readonly pullRequest = computed<PullRequestResult | null>(() => this.pushResult() ?? this.run().pullRequest ?? null);
+  protected readonly canPush = computed(
+    () => this.run().status === 'done' && !!this.run().branch && !!this.run().workspace && !this.run().workspaceRemoved && !this.pullRequest()?.pushed,
+  );
+  private readonly pushResult = signal<PullRequestResult | null>(null);
+  protected readonly pushing = signal(false);
+
+  protected createPullRequest(): void {
+    const run = this.run();
+    this.confirm.confirm({
+      header: 'Create a pull request?',
+      message: `Refit pushes the branch ${run.branch} to the app's remote and opens a pull request with the report as its description. Nothing is merged.`,
+      icon: 'pi pi-share-alt',
+      acceptLabel: 'Push and create',
+      rejectLabel: 'Not now',
+      rejectButtonProps: { severity: 'secondary', text: true },
+      accept: async () => {
+        this.pushing.set(true);
+        try {
+          const result = await this.api.createPullRequest(run.id);
+          this.pushResult.set(result);
+          if (result.created) this.notify.success('Pull request created');
+          else if (result.pushed) this.notify.success('Branch pushed', 'Open the create page to finish the pull request.');
+          else this.notify.info('Not pushed', 'See the commands to finish by hand.');
+          this.appState.refresh();
+        } catch (error) {
+          this.notify.error(error, 'Could not create the pull request');
+        } finally {
+          this.pushing.set(false);
+        }
+      },
+    });
+  }
 
   protected async openReport(): Promise<void> {
     try {

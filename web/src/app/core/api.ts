@@ -13,6 +13,7 @@ import type {
   ProviderId,
   ProviderStatus,
   ProviderTestResult,
+  PullRequestResult,
   RunRecord,
   RunSettings,
   StateResponse,
@@ -127,6 +128,11 @@ export class Api {
 
   runDiff(runId: string, file: string): Promise<{ file: string; diff: string }> {
     return this.request(this.http.get<{ file: string; diff: string }>(`/api/runs/${runId}/diff`, { params: { file } }));
+  }
+
+  /** Pushes the run's branch and opens the pull request where Refit can. Only on an explicit click. */
+  createPullRequest(runId: string): Promise<PullRequestResult> {
+    return this.request(this.http.post<PullRequestResult>(`/api/runs/${runId}/pull-request`, {}));
   }
 
   runReport(runId: string): Promise<string> {

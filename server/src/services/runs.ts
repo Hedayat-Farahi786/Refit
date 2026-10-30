@@ -1,6 +1,7 @@
+import { openPullRequest } from '../git/pull-request.js';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
-import type { AppRecord, ChangedFile, ProviderId, RunEvent, RunEventBody, RunRecord, RunSettings } from '@refit/shared';
+import type { AppRecord, ChangedFile, ProviderId, PullRequestResult, RunEvent, RunEventBody, RunRecord, RunSettings } from '@refit/shared';
 import { MODERNIZE_STEPS, applyRunEvent, normalizeBrand, shortId } from '@refit/shared';
 import type { BrowserManager } from '../browser/session.js';
 import type { ServerContext } from '../context.js';
@@ -43,6 +44,8 @@ export class RunService {
     private readonly browser: BrowserManager,
     /** Extra sign-in hosts for tests that use a mock identity provider. */
     private readonly signInHosts?: readonly string[],
+    /** Replaces the GitHub CLI for pull requests (tests). */
+    private readonly ghCommand?: string,
   ) {
     this.recoverInterrupted();
   }
@@ -262,6 +265,40 @@ export class RunService {
     } catch {
       throw new UserError('This run has no report yet.', run.status === 'running' ? 'The report is written when the run ends.' : 'The run stopped before it could write one.', 404);
     }
+  }
+
+  /**
+   * "Create pull request": pushes the run's branch (only on this explicit request) and opens the
+   * pull request where Refit can. Never merges.
+   */
+  async createPullRequest(runId: string): Promise<PullRequestResult> {
+    const run = this.get(runId);
+    if (run.kind !== 'modernize') throw new UserError('Only modernize runs have a branch to share.');
+    if (this.active?.runId === runId) throw new UserError('This run is still in progress.', 'Wait until it is ready for review.', 409);
+    if (run.status !== 'done') throw new UserError('Only runs that are ready for review can become a pull request.', 'The branch is still in the workspace if a developer wants to look at it.', 409);
+    if (!run.workspace || run.workspaceRemoved || !(await isDirectory(run.workspace))) {
+      throw new UserError('The workspace of this run was removed, and the branch with it.', 'Start a new run to create a new branch.', 410);
+    }
+    if (!run.branch || !run.baseBranch) throw new UserError('This run has no branch.', 'Start a new run.', 409);
+    const description = await this.report(runId);
+    const app = this.ctx.store.get((state) => state.apps.find((candidate) => candidate.id === run.appId));
+    const pages = run.result?.pagesDone ?? 0;
+    const result = await openPullRequest({
+      workspace: run.workspace,
+      branch: run.branch,
+      base: run.baseBranch,
+      title: `Modernize the ${run.appName} front end (${pages} ${pages === 1 ? 'page' : 'pages'})`,
+      reportFile: run.result?.reportPath ?? path.join(this.ctx.paths.runs, runId, 'report.md'),
+      description,
+      ...(app?.source.kind === 'local' ? { sourcePath: app.source.path } : {}),
+      ...(this.ghCommand !== undefined ? { ghCommand: this.ghCommand } : {}),
+    });
+    this.ctx.store.update((state) => {
+      const target = state.runs.find((candidate) => candidate.id === runId);
+      if (target) target.pullRequest = result;
+    });
+    this.ctx.bus.changed('run-updated', { runId, appId: run.appId });
+    return result;
   }
 
   /** Deletes the run's workspace (and with it the local branch). History and report stay. */

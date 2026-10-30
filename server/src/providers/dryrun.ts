@@ -10,6 +10,10 @@ export interface DryRunOptions {
   touchFile?: string;
   /** Test hook: break the build on the page with this label, to exercise fix and rollback. */
   breakBuildOnPage?: string;
+  /** Test hook: design reviews mark the page's template, so review rounds commit something. */
+  reviewsChangePages?: boolean;
+  /** Test hook: break the build in the design review of the page with this label. */
+  breakBuildInReviewOf?: string;
 }
 
 /**
@@ -37,9 +41,7 @@ export class DryRunProvider implements AgentProvider {
         case 'foundation':
           return await this.foundation(args, wait);
         case 'polish':
-          args.onEvent({ kind: 'thought', text: 'Comparing the after screenshots with the UI checklist.' });
-          await wait();
-          return { ok: true, text: report(args.task.label, 'Everything already meets the checklist.', []), costUsd: 0, requests: 0 };
+          return await this.polish(args, wait);
         default:
           return await this.edit(args, wait);
       }
@@ -129,6 +131,23 @@ export class DryRunProvider implements AgentProvider {
     }
     const marked = await this.edit({ ...args, task: { ...args.task, files: args.task.files.filter((file) => file !== configFile && file !== stylesFile) } }, wait);
     return { ...marked, text: report(args.task.label, 'Dry run: PrimeNG is registered with the brand and the app shell is marked.', changes) };
+  }
+
+  private async polish(args: AgentRunArgs, wait: () => Promise<void>): Promise<AgentResult> {
+    args.onEvent({ kind: 'thought', text: 'Comparing the after screenshots with the UI checklist.' });
+    await wait();
+    const template = args.task.files.find((file) => file.endsWith('.html'));
+    const breaks = this.options.breakBuildInReviewOf === args.task.label;
+    if (!template || (!this.options.reviewsChangePages && !breaks)) {
+      return { ok: true, text: report(args.task.label, 'Everything already meets the checklist.', []), costUsd: 0, requests: 0 };
+    }
+    const full = path.join(args.cwd, ...template.split('/'));
+    let next = `${await fs.readFile(full, 'utf8')}\n<!-- Refit dry run: design review -->\n`;
+    if (breaks) next += '<p>{{ refitDryRunReviewBrokenBinding }}</p>\n';
+    args.onEvent({ kind: 'tool', tool: 'Edit', target: template });
+    await fs.writeFile(full, next);
+    await wait();
+    return { ok: true, text: report(args.task.label, 'Dry run: tightened the spacing.', ['Tightened the spacing between the filters and the table.']), costUsd: 0, requests: 0 };
   }
 
   private async review(args: AgentRunArgs, wait: () => Promise<void>): Promise<AgentResult> {

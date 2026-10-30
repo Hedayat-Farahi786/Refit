@@ -13,8 +13,8 @@ Living status of the build. The plan and its reasoning are in [PLAN.md](PLAN.md)
 | 5. GitHub Copilot | Paused (Angular first, as asked); groundwork and research done |
 | Design and brands (asked for during phase 5) | Done |
 | 6. Upgrade and design system | Done |
-| 7. Polish loop and delivery | Next |
-| 8. Finish | Not started |
+| 7. Polish loop and delivery | Done |
+| 8. Finish | Next |
 
 ## Phase 1: Foundation (done)
 
@@ -352,6 +352,43 @@ How to try it: add an Angular 17–20 app and choose **Modernize**. Under **Angu
 **Upgrade to Angular 21**, choose **Oerlikon**, and start a dry run. The run view shows each hop,
 then PrimeNG and the brand. The branch has one commit per step.
 
+## Phase 7: Polish loop and delivery (done)
+
+What works:
+
+- **Design review rounds** (0, 1 or 2 per run). After a page passes its build and behavior checks,
+  a fresh reviewer agent compares the after screenshots (and the before ones) with the UI checklist
+  and the brand guide, and fixes what is missing.
+  - Each round is guarded, built, re-screenshotted and checked for API changes.
+  - A round that breaks the build or changes API calls is rolled back on its own, and the page's
+    modernization stays.
+  - A round that finds nothing to change ends the reviews for that page.
+  - Kept rounds are squashed into the page's single commit. The reviewers' changes appear in the
+    page's "What changed" list, prefixed "Design review:".
+- **Report** additions: the Angular and design-system rows, the design system section, an
+  **API calls** table per page, and new console errors.
+- **Create pull request** (only on a click, after a confirmation that names the branch):
+  - Refit pushes the branch to the app's remote; Git Credential Manager may ask the user to sign
+    in.
+  - **GitHub:** `gh pr create` with the report as the description. Without `gh`, the compare
+    link.
+  - **Azure DevOps:** the "create pull request" page link and a "Copy description" button.
+  - **GitLab:** the new merge request link.
+  - **Other hosts:** the branch is pushed, with a short note.
+  - **No remote** (a local folder): the exact `git fetch` commands to bring the branch into the
+    user's own repository.
+  - **Failed push:** the reason and the commands to run in a signed-in terminal.
+  - The outcome is saved on the run. Nothing is ever merged.
+- **Tests:**
+  - 257 unit tests, including pull requests against local bare repos. A `pushInsteadOf` rule
+    keeps the remote looking like GitHub or Azure DevOps while pushes stay local. A fake `gh`
+    covers PR creation.
+  - integration: a kept review round squashed into the page commit, and a broken review round
+    rolled back alone
+  - end-to-end: "Create pull request" on an app without a remote
+
+How to try it: finish a dry run, then choose **Create pull request** on the run page.
+
 ## Decisions and differences from the spec
 
 1. **PrimeNG 21 and Angular 21, not the newest versions.** PrimeNG 22, `@primeuix/themes` 3 and
@@ -431,6 +468,11 @@ then PrimeNG and the brand. The branch has one commit per step.
 28. **The foundation task is the only one that may touch the providers file and the global
     stylesheet**, and only to add PrimeNG. The generated theme files are protected for every agent
     task; change the brand in Refit and run again instead.
+29. **Design review rounds stop early** when a reviewer finds nothing to change, which saves cost.
+    Each round gets its own commit so it can be rolled back alone, then they are squashed: the
+    branch keeps one commit per page, as the spec asks.
+30. **Pull requests for apps without a remote** (a local folder) get the exact commands to fetch the
+    branch into the user's own repository, instead of an error.
 
 ## Notes for later phases
 

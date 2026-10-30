@@ -22,6 +22,8 @@ beforeAll(async () => {
       delayMs: 5,
       touchFile: 'src/app/services/request.service.ts',
       breakBuildOnPage: 'New request page',
+      reviewsChangePages: true,
+      breakBuildInReviewOf: 'Requests page',
     }),
   });
   const folder = await fixtureRepo('ng-modern-bootstrap');
@@ -96,6 +98,15 @@ describe('dry run on ng-modern-bootstrap', () => {
     expect(changed.split('\n')).not.toContain('src/app/pages/request-form/request-form.component.html');
     expect(await fs.readFile(path.join(workspace, 'src/app/pages/dashboard/dashboard.component.html'), 'utf8')).toMatch(/^<!-- Refit dry run: Dashboard page -->/);
 
+    // Design review (one round by default): kept on Dashboard and squashed into its commit;
+    // rolled back on Requests, where it broke the build, without touching the page itself.
+    const dashboardHtml = await fs.readFile(path.join(workspace, 'src/app/pages/dashboard/dashboard.component.html'), 'utf8');
+    expect(dashboardHtml).toContain('<!-- Refit dry run: design review -->');
+    const requestsHtml = await fs.readFile(path.join(workspace, 'src/app/pages/request-list/request-list.component.html'), 'utf8');
+    expect(requestsHtml).toMatch(/^<!-- Refit dry run: Requests page -->/);
+    expect(requestsHtml).not.toContain('design review');
+    expect(run.pages.find((page) => page.name === 'Dashboard')?.report?.changes).toContain('Design review: Tightened the spacing between the filters and the table.');
+
     // The report and the event log.
     const report = await fs.readFile(run.result!.reportPath!, 'utf8');
     expect(report).toContain('# Front-end modernization: Service desk');
@@ -103,6 +114,8 @@ describe('dry run on ng-modern-bootstrap', () => {
     expect(report).toContain('| Angular | Keeping Angular 21 |');
     expect(report).toContain('| Design system | PrimeNG 21.1.10 with Oerlikon |');
     expect(report).toContain('## Design system');
+    expect(report).toContain('## API calls');
+    expect(report).toMatch(/\| Requests \| Unchanged \(\d+ calls?\) \|/);
     expect(report).toContain('## Protected files the agent touched (reverted)');
     expect(report).toContain('`src/app/services/request.service.ts`');
     const events: RunEvent[] = await server.services.runs.events(run.id, 0);
@@ -110,6 +123,8 @@ describe('dry run on ng-modern-bootstrap', () => {
     expect(events.at(-1)?.type).toBe('result');
     expect(events.some((event) => event.type === 'log' && event.source === 'guard')).toBe(true);
     expect(events.some((event) => event.type === 'agent' && event.kind === 'tool')).toBe(true);
+    expect(events.some((event) => event.type === 'page' && event.status === 'reviewing')).toBe(true);
+    expect(events.some((event) => event.type === 'log' && event.text.includes('design review 1 broke the build'))).toBe(true);
 
     // The design system: PrimeNG and the brand installed, the theme files written, PrimeNG registered.
     expect(run.steps.find((step) => step.id === 'upgrade')?.detail).toBe('Keeping Angular 21');

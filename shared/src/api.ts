@@ -341,6 +341,8 @@ export interface RunRecord {
   pullRequestUrl?: string;
   /** True after the user removed the run's workspace (the branch only existed there). */
   workspaceRemoved?: boolean;
+  /** Set once the branch was pushed from Refit ("Create pull request"). */
+  pullRequest?: PullRequestResult;
   lastSeq: number;
 }
 
@@ -386,4 +388,22 @@ export interface ApiError {
   error: string;
   /** What the user can do about it. */
   fix?: string;
+}
+
+/** What "Create pull request" did. Refit pushes only when the user clicks, and never merges. */
+export interface PullRequestResult {
+  /** Where the branch went. "none" means the workspace has no remote to push to. */
+  host: 'github' | 'azure-devops' | 'gitlab' | 'other' | 'none';
+  pushed: boolean;
+  /** True when Refit created the pull request itself (GitHub with the gh CLI). */
+  created: boolean;
+  /** The pull request, or the page where it can be created. */
+  url?: string;
+  /** What happened, in plain words. */
+  message: string;
+  /** Commands to finish by hand, when something could not be done automatically. */
+  commands: string[];
+  /** The pull request description (report.md), to paste where Refit could not. */
+  description: string;
+  at: string;
 }

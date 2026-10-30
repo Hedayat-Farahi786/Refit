@@ -6,6 +6,8 @@ export interface GitOptions {
   timeoutMs?: number;
   signal?: AbortSignal;
   onLine?: (line: string) => void;
+  /** Extra environment variables; undefined removes one. */
+  env?: Record<string, string | undefined>;
 }
 
 export class GitError extends Error {
@@ -36,7 +38,7 @@ export function runGit(cwd: string, args: string[], options: GitOptions = {}): P
     command: 'git',
     args,
     cwd,
-    env: childEnv({ GIT_OPTIONAL_LOCKS: '0', LC_ALL: 'C' }),
+    env: childEnv({ GIT_OPTIONAL_LOCKS: '0', LC_ALL: 'C', ...(options.env ?? {}) }),
     timeoutMs: options.timeoutMs ?? 120_000,
     ...(options.signal ? { signal: options.signal } : {}),
     ...(options.onLine ? { onLine: (line: string) => options.onLine?.(line) } : {}),

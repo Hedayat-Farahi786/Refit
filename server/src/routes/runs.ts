@@ -21,6 +21,8 @@ const settingsSchema = z.object({
 
 export function registerRunRoutes(app: FastifyInstance, runs: RunService, providers: ProviderRegistry): void {
   app.get('/api/providers', async () => providers.statuses());
+  // Pushes only because the user clicked "Create pull request".
+  app.post<{ Params: { id: string } }>('/api/runs/:id/pull-request', async (request) => runs.createPullRequest(request.params.id));
   app.post<{ Params: { id: string } }>('/api/providers/:id/test', async (request) => providers.test(parseBody(providerIdSchema, request.params.id)));
 
   app.post<{ Params: { id: string } }>('/api/apps/:id/runs', async (request, reply) => {

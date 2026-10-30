@@ -86,6 +86,30 @@ export function buildReport(input: ReportInput): string {
     }
   }
 
+  // The behavior check: the same API calls before and after, per page.
+  const checked = run.pages.filter((page) => page.status === 'done' || page.status === 'flagged');
+  if (checked.length > 0) {
+    lines.push('## API calls', '', 'Refit records the calls each page makes to the backend before and after, and compares them.', '', '| Page | Result |', '|---|---|');
+    for (const page of checked) {
+      const diff = page.apiDiff;
+      const result = !diff
+        ? page.signInNeeded
+          ? 'Not checked (sign-in was needed)'
+          : 'Not checked'
+        : diff.added.length === 0 && diff.removed.length === 0
+          ? `Unchanged (${diff.unchanged} ${diff.unchanged === 1 ? 'call' : 'calls'})`
+          : `**Changed**: ${diff.added.length} new, ${diff.removed.length} missing`;
+      lines.push(`| ${page.name} | ${result} |`);
+    }
+    lines.push('');
+  }
+  const consoleErrors = run.pages.filter((page) => (page.newConsoleErrors?.length ?? 0) > 0);
+  if (consoleErrors.length > 0) {
+    lines.push('## New console errors', '');
+    for (const page of consoleErrors) for (const error of page.newConsoleErrors!.slice(0, 5)) lines.push(`- **${page.name}**: ${error}`);
+    lines.push('');
+  }
+
   if (input.reverts.length > 0) {
     lines.push('## Protected files the agent touched (reverted)', '');
     lines.push('Refit put these files back exactly as they were. Nothing of this is in the branch.', '');

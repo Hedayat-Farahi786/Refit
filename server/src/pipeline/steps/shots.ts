@@ -101,15 +101,15 @@ export async function shootPage(ctx: RunContext, page: PageConfig, phase: ShotPh
   return desktop!;
 }
 
-/** Puts a page's before screenshots where the agent can open them (.refit/shots, ignored by git). */
-export async function shareBeforeShots(ctx: RunContext, page: PageConfig): Promise<{ relative: string[]; absolute: string[] }> {
+/** Puts a page's screenshots where the agent can open them (.refit/shots, ignored by git). */
+export async function shareShots(ctx: RunContext, page: PageConfig, phase: ShotPhase = 'before'): Promise<{ relative: string[]; absolute: string[] }> {
   const folder = path.join(ctx.paths.appFolder, '.refit', 'shots');
   await fs.mkdir(folder, { recursive: true });
   const relative: string[] = [];
   const absolute: string[] = [];
   for (const [viewport] of VIEWPORTS) {
-    const source = shotPath(ctx, page.id, 'before', viewport);
-    const name = shotFileName(page.id, 'before', viewport);
+    const source = shotPath(ctx, page.id, phase, viewport);
+    const name = shotFileName(page.id, phase, viewport);
     try {
       await fs.copyFile(source, path.join(folder, name));
       relative.push(`.refit/shots/${name}`);
