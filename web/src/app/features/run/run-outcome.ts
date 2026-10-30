@@ -204,6 +204,9 @@ interface Tile {
       padding: 14px 24px;
       border-right: 1px solid var(--refit-border);
     }
+    .tile:last-child {
+      border-right: 0;
+    }
     .tile dd {
       font-size: 1.1rem;
       font-weight: 600;

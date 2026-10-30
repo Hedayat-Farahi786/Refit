@@ -266,6 +266,12 @@ export function brandCss(input: Brand, target: ThemeTarget = DEFAULT_THEME_TARGE
     '  font-weight: 600;',
     '}',
     '',
+    '/* Tags and column headers stay on one line; a wide table scrolls instead. */',
+    '.p-tag,',
+    '.p-datatable-thead > tr > th {',
+    '  white-space: nowrap;',
+    '}',
+    '',
   ];
 
   const layout = [
