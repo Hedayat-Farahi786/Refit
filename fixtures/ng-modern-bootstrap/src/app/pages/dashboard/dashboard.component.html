@@ -1,0 +1,49 @@
+<h2 class="page-title">Dashboard</h2>
+
+@if (error()) {
+  <div class="alert alert-danger">{{ error() }}</div>
+}
+
+<div class="row">
+  <div class="col-md-4">
+    <div class="card stat-card text-white bg-info mb-3">
+      <div class="card-body">
+        <h5 class="card-title">Open</h5>
+        <p class="card-text display-6">{{ stats()?.open ?? '-' }}</p>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card stat-card text-white bg-warning mb-3">
+      <div class="card-body">
+        <h5 class="card-title">In progress</h5>
+        <p class="card-text display-6">{{ stats()?.inProgress ?? '-' }}</p>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card stat-card text-white bg-success mb-3">
+      <div class="card-body">
+        <h5 class="card-title">Done</h5>
+        <p class="card-text display-6">{{ stats()?.done ?? '-' }}</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    Recent requests
+    <a class="btn btn-sm btn-primary float-end" routerLink="/requests/new">New request</a>
+  </div>
+  <ul class="list-group list-group-flush">
+    @for (request of recent(); track request.id) {
+      <li class="list-group-item">
+        <a [routerLink]="['/requests', request.id]">#{{ request.id }} {{ request.title }}</a>
+        <span class="badge bg-secondary float-end">{{ request.status }}</span>
+      </li>
+    } @empty {
+      <li class="list-group-item text-muted">No requests yet.</li>
+    }
+  </ul>
+</div>

@@ -1,0 +1,33 @@
+{
+  "port": 4700,
+  "workspacesDir": "workspaces",
+  "targetAngularMajor": 21,
+  "budget": { "perPageUsd": 1.5, "perRunUsd": 25, "reviewUsd": 0.6, "foundationUsd": 3 },
+  "maxTurns": { "review": 25, "foundation": 60, "page": 45, "polish": 30, "fix": 20 },
+  "claude": {
+    "models": { "review": "sonnet", "foundation": "sonnet", "page": "sonnet", "polish": "sonnet", "fix": "sonnet" },
+    "strongModel": "opus",
+    "effort": "medium"
+  },
+  "copilot": { "model": "", "maxAiCreditsPerTask": 0 },
+  "defaults": {
+    "polishRounds": 1,
+    "runTests": false,
+    "upgradeAngular": true,
+    "onApiChange": "flag",
+    "strongModelForComplexPages": false
+  },
+  "timeouts": { "installMin": 15, "buildMin": 10, "serveMin": 6, "upgradeHopMin": 15, "testMin": 15, "agentMin": 30 },
+  "browser": { "channel": "chromium", "executablePath": "", "settleCapSec": 15 },
+  "protectedPaths": [
+    "**/*.service.ts", "**/services/**", "**/*.interceptor.ts", "**/interceptors/**",
+    "**/*.guard.ts", "**/guards/**", "**/*.resolver.ts", "**/environments/**", "**/auth/**",
+    "**/*msal*", "**/*.effects.ts", "**/*.reducer.ts", "**/store/**", "**/api/**",
+    "**/*-routing.module.ts", "**/*.routes.ts", "**/proxy.conf.*",
+    "package.json", "package-lock.json", "yarn.lock", "pnpm-lock.yaml", ".env*",
+    "server/**", "backend/**"
+  ],
+  "sensitivePaths": [
+    "angular.json", "**/app.module.ts", "**/app.config.ts", "**/main.ts", "**/*.spec.ts", "**/*.model.ts"
+  ]
+}

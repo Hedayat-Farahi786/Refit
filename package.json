@@ -1,0 +1,41 @@
+{
+  "name": "refit",
+  "version": "0.1.0",
+  "description": "Modernize the front end of Angular apps with AI agents, safely and page by page.",
+  "private": true,
+  "type": "module",
+  "license": "UNLICENSED",
+  "engines": {
+    "node": "^22.12.0 || >=24.0.0"
+  },
+  "workspaces": [
+    "shared",
+    "server",
+    "web"
+  ],
+  "scripts": {
+    "postinstall": "npm run build -w @refit/shared",
+    "start": "node scripts/start.mjs",
+    "dev": "node scripts/dev.mjs",
+    "build": "node scripts/build.mjs --force",
+    "setup:browser": "npx playwright install chromium",
+    "test": "vitest run --project unit",
+    "test:integration": "vitest run --project integration",
+    "test:slow": "vitest run --project slow",
+    "test:e2e": "playwright test -c web/e2e/playwright.config.ts",
+    "test:all": "npm run lint && npm run typecheck && npm test && npm run test:integration && npm run test:e2e",
+    "lint": "eslint .",
+    "typecheck": "tsc -p shared --noEmit && tsc -p server --noEmit && tsc -p web/tsconfig.app.json --noEmit"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@playwright/test": "1.63.0",
+    "@types/node": "^22.20.5",
+    "eslint": "^10.13.0",
+    "prettier": "^3.8.1",
+    "typescript": "~5.9.3",
+    "typescript-eslint": "^8.72.1",
+    "vite": "7.3.7",
+    "vitest": "^4.1.12"
+  }
+}

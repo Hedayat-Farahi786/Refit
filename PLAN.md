@@ -271,9 +271,8 @@ refit/
                           developer), results (comparison stage, PR), history, brand studio, settings
     ui/                   status chip, empty state, elapsed timer, copy button, skeletons
   web/e2e/                Playwright tests of Refit itself
-  playbook/common/        RULES, PAGE_PROCEDURE, UI_CHECKLIST: the stack-neutral parts of appendix A–C
-  playbook/angular/       Angular- and PrimeNG-specific rules layered on top (the system prompt is
-                          still identical across calls within a stack, so caching keeps working)
+  playbook/               RULES, PAGE_PROCEDURE, UI_CHECKLIST (appendix A–C, written for Angular +
+                          PrimeNG); a second stack gets its own playbook folder next to it
   brand/ fixtures/ data/ workspaces/   as in the spec
   .github/workflows/ci.yml  Ubuntu, Windows and macOS × Node 22 and 24: lint, typecheck, unit, integration
 ```

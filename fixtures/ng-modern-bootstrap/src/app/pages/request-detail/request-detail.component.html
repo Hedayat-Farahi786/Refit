@@ -1,0 +1,21 @@
+<a routerLink="/requests">&laquo; Back to requests</a>
+
+@if (error()) {
+  <div class="alert alert-danger mt-3">{{ error() }}</div>
+}
+
+@if (request(); as request) {
+  <h2 class="page-title mt-3">#{{ request.id }} {{ request.title }}</h2>
+  <dl class="row">
+    <dt class="col-sm-3">Requester</dt>
+    <dd class="col-sm-9">{{ request.requester }}</dd>
+    <dt class="col-sm-3">Priority</dt>
+    <dd class="col-sm-9">{{ request.priority }}</dd>
+    <dt class="col-sm-3">Status</dt>
+    <dd class="col-sm-9"><span class="badge bg-secondary">{{ request.status }}</span></dd>
+    <dt class="col-sm-3">Created</dt>
+    <dd class="col-sm-9">{{ request.createdAt }}</dd>
+    <dt class="col-sm-3">Description</dt>
+    <dd class="col-sm-9">{{ request.description }}</dd>
+  </dl>
+}

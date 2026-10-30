@@ -1,0 +1,36 @@
+<h2 class="page-title">New request</h2>
+
+@if (error()) {
+  <div class="alert alert-danger">{{ error() }}</div>
+}
+
+<form [formGroup]="form" (ngSubmit)="submit()" class="request-form">
+  <div class="mb-3">
+    <label for="title" class="form-label">Title *</label>
+    <input id="title" class="form-control" formControlName="title" />
+    @if (form.controls.title.touched && form.controls.title.invalid) {
+      <div class="text-danger small">Title is required (max 80 characters).</div>
+    }
+  </div>
+  <div class="mb-3">
+    <label for="requester" class="form-label">Requester email *</label>
+    <input id="requester" type="email" class="form-control" formControlName="requester" />
+    @if (form.controls.requester.touched && form.controls.requester.invalid) {
+      <div class="text-danger small">Enter a valid email address.</div>
+    }
+  </div>
+  <div class="mb-3">
+    <label for="priority" class="form-label">Priority</label>
+    <select id="priority" class="form-select" formControlName="priority">
+      <option value="low">Low</option>
+      <option value="normal">Normal</option>
+      <option value="high">High</option>
+    </select>
+  </div>
+  <div class="mb-3">
+    <label for="description" class="form-label">Description</label>
+    <textarea id="description" rows="4" class="form-control" formControlName="description"></textarea>
+  </div>
+  <button type="submit" class="btn btn-primary" [disabled]="saving()">Submit</button>
+  <a class="btn btn-link" routerLink="/requests">Cancel</a>
+</form>

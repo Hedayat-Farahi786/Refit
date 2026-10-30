@@ -1,0 +1,23 @@
+node_modules/
+dist/
+out-tsc/
+.angular/
+coverage/
+test-results/
+playwright-report/
+*.tsbuildinfo
+
+# Runtime state, screenshots, browser profile and per-run clones
+/data/
+/workspaces/
+
+# Secrets
+.env
+.env.*
+!.env.example
+
+# OS and editor noise
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

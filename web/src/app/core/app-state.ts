@@ -1,0 +1,84 @@
+import { Injectable, computed, inject, signal } from '@angular/core';
+import type { AppRecord, Brand, StateEvent, StateResponse } from '@refit/shared';
+import { Api, RequestError, toRequestError } from './api';
+
+/**
+ * The single source of truth for what the UI shows. It loads /api/state and refreshes it
+ * whenever the server says something changed (over the /api/events stream).
+ */
+@Injectable({ providedIn: 'root' })
+export class AppState {
+  private readonly api = inject(Api);
+  private readonly stateSignal = signal<StateResponse | null>(null);
+  private readonly errorSignal = signal<RequestError | null>(null);
+  private readonly connectedSignal = signal(true);
+  private refreshTimer: ReturnType<typeof setTimeout> | null = null;
+  private events: EventSource | null = null;
+  private readonly listeners = new Set<(event: StateEvent) => void>();
+
+  readonly state = this.stateSignal.asReadonly();
+  readonly error = this.errorSignal.asReadonly();
+  /** False while the live connection to the server is down. */
+  readonly connected = this.connectedSignal.asReadonly();
+  readonly loaded = computed(() => this.stateSignal() !== null);
+  readonly apps = computed<AppRecord[]>(() => this.stateSignal()?.apps ?? []);
+  readonly brands = computed<Brand[]>(() => this.stateSignal()?.brands ?? []);
+  readonly uiBrand = computed<Brand | null>(() => {
+    const state = this.stateSignal();
+    if (!state) return null;
+    return state.brands.find((brand) => brand.id === state.settings.uiBrandId) ?? state.brands[0] ?? null;
+  });
+
+  app(id: string | null | undefined): AppRecord | undefined {
+    return id ? this.apps().find((app) => app.id === id) : undefined;
+  }
+
+  async load(): Promise<void> {
+    try {
+      this.stateSignal.set(await this.api.state());
+      this.errorSignal.set(null);
+    } catch (error) {
+      this.errorSignal.set(toRequestError(error));
+    }
+  }
+
+  /** Connects to the server's change stream. Safe to call more than once. */
+  connect(): void {
+    if (this.events) return;
+    const source = new EventSource('/api/events');
+    this.events = source;
+    source.onopen = () => {
+      if (!this.connectedSignal()) this.scheduleRefresh(0);
+      this.connectedSignal.set(true);
+    };
+    source.onerror = () => this.connectedSignal.set(false);
+    source.onmessage = (message: MessageEvent<string>) => {
+      const event = JSON.parse(message.data) as StateEvent;
+      for (const listener of this.listeners) listener(event);
+      if (event.type === 'state-changed' && event.reason !== 'connected') this.scheduleRefresh(60);
+    };
+  }
+
+  /** Listens to every server event (for example sign-in progress). Returns an unsubscribe function. */
+  onEvent(listener: (event: StateEvent) => void): () => void {
+    this.listeners.add(listener);
+    return () => this.listeners.delete(listener);
+  }
+
+  /** Replaces one app in the local state right away (after a save), before the next refresh. */
+  patchApp(app: AppRecord): void {
+    this.stateSignal.update((state) => (state ? { ...state, apps: state.apps.map((existing) => (existing.id === app.id ? app : existing)) } : state));
+  }
+
+  refresh(): void {
+    this.scheduleRefresh(0);
+  }
+
+  private scheduleRefresh(delayMs: number): void {
+    if (this.refreshTimer) return;
+    this.refreshTimer = setTimeout(() => {
+      this.refreshTimer = null;
+      void this.load();
+    }, delayMs);
+  }
+}

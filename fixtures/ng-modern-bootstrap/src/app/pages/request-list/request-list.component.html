@@ -1,0 +1,51 @@
+<h2 class="page-title">Requests</h2>
+
+<div class="toolbar">
+  <label for="status">Status:</label>
+  <select id="status" class="form-select form-select-sm" [(ngModel)]="statusFilter" (change)="applyFilter()">
+    <option value="">All</option>
+    <option value="open">Open</option>
+    <option value="in-progress">In progress</option>
+    <option value="done">Done</option>
+  </select>
+  <a class="btn btn-success btn-sm" routerLink="/requests/new">+ New request</a>
+</div>
+
+@if (loading()) {
+  <p>Loading...</p>
+} @else if (error()) {
+  <div class="alert alert-danger">{{ error() }}</div>
+} @else {
+  <table class="table table-striped table-bordered table-hover table-sm">
+    <thead class="table-dark">
+      <tr>
+        <th>ID</th>
+        <th>Title</th>
+        <th>Requester</th>
+        <th>Priority</th>
+        <th>Status</th>
+        <th>Created</th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (request of visible(); track request.id) {
+        <tr (click)="open(request)" class="clickable">
+          <td>{{ request.id }}</td>
+          <td>{{ request.title }}</td>
+          <td>{{ request.requester }}</td>
+          <td>{{ request.priority }}</td>
+          <td>
+            <span class="badge" [class.bg-info]="request.status === 'open'" [class.bg-warning]="request.status === 'in-progress'" [class.bg-success]="request.status === 'done'">
+              {{ request.status }}
+            </span>
+          </td>
+          <td>{{ request.createdAt }}</td>
+        </tr>
+      } @empty {
+        <tr>
+          <td colspan="6">No requests match.</td>
+        </tr>
+      }
+    </tbody>
+  </table>
+}

@@ -1,0 +1,109 @@
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { Injectable, inject } from '@angular/core';
+import { firstValueFrom } from 'rxjs';
+import type {
+  ApiError,
+  AppRecord,
+  AppSource,
+  Brand,
+  CommandOverrides,
+  EditableConfig,
+  PageConfig,
+  StateResponse,
+  UiSettings,
+} from '@refit/shared';
+
+/** A failed request, with the server's plain-language message and suggested fix. */
+export class RequestError extends Error {
+  constructor(
+    message: string,
+    readonly fix: string | undefined,
+    readonly status: number,
+  ) {
+    super(message);
+  }
+}
+
+export interface FolderInspection {
+  ok: boolean;
+  message?: string;
+  warning?: string;
+  git?: boolean;
+  angular?: string | null;
+  suggestedName?: string;
+}
+
+export interface AppPatch {
+  name?: string;
+  port?: number;
+  pages?: PageConfig[];
+  overrides?: CommandOverrides;
+  subdir?: string;
+}
+
+/** Typed access to Refit's REST API. Every method throws RequestError on failure. */
+@Injectable({ providedIn: 'root' })
+export class Api {
+  private readonly http = inject(HttpClient);
+
+  state(): Promise<StateResponse> {
+    return this.request(this.http.get<StateResponse>('/api/state'));
+  }
+
+  addApp(input: { name: string; source: AppSource; port: number }): Promise<AppRecord> {
+    return this.request(this.http.post<AppRecord>('/api/apps', input));
+  }
+
+  updateApp(id: string, patch: AppPatch): Promise<AppRecord> {
+    return this.request(this.http.patch<AppRecord>(`/api/apps/${id}`, patch));
+  }
+
+  removeApp(id: string): Promise<void> {
+    return this.request(this.http.delete<void>(`/api/apps/${id}`));
+  }
+
+  scanApp(id: string): Promise<AppRecord> {
+    return this.request(this.http.post<AppRecord>(`/api/apps/${id}/scan`, {}));
+  }
+
+  inspectFolder(path: string): Promise<FolderInspection> {
+    return this.request(this.http.get<FolderInspection>('/api/inspect-folder', { params: { path } }));
+  }
+
+  saveBrand(brand: Brand): Promise<Brand> {
+    return this.request(this.http.put<Brand>(`/api/brands/${brand.id}`, brand));
+  }
+
+  deleteBrand(id: string): Promise<void> {
+    return this.request(this.http.delete<void>(`/api/brands/${id}`));
+  }
+
+  saveSettings(settings: Pick<UiSettings, 'uiBrandId'>): Promise<UiSettings> {
+    return this.request(this.http.put<UiSettings>('/api/settings', settings));
+  }
+
+  saveConfig(config: EditableConfig): Promise<EditableConfig> {
+    return this.request(this.http.put<EditableConfig>('/api/config', config));
+  }
+
+  private async request<T>(observable: import('rxjs').Observable<T>): Promise<T> {
+    try {
+      return await firstValueFrom(observable, { defaultValue: undefined as T });
+    } catch (error) {
+      throw toRequestError(error);
+    }
+  }
+}
+
+export function toRequestError(error: unknown): RequestError {
+  if (error instanceof RequestError) return error;
+  if (error instanceof HttpErrorResponse) {
+    if (error.status === 0) {
+      return new RequestError('Refit is not responding.', 'Check that Refit is still running in its terminal, then try again.', 0);
+    }
+    const body = error.error as Partial<ApiError> | null;
+    if (body && typeof body.error === 'string') return new RequestError(body.error, body.fix, error.status);
+    return new RequestError(`The request failed (${error.status} ${error.statusText}).`, 'Try again.', error.status);
+  }
+  return new RequestError(error instanceof Error ? error.message : String(error), undefined, 0);
+}

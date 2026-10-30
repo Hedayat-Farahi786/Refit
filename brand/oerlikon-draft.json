@@ -1,0 +1,11 @@
+{
+  "id": "oerlikon-draft",
+  "name": "Oerlikon (draft)",
+  "status": "draft",
+  "note": "Placeholder values. Replace the color, font and radius with the official values from Oerlikon Corporate Communications, then mark the brand as approved.",
+  "primary": "#1d4f91",
+  "surface": "slate",
+  "fontFamily": "'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
+  "fontImport": "",
+  "radius": 6
+}
