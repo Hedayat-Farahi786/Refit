@@ -33,6 +33,10 @@ export function buildReport(input: ReportInput): string {
   );
 
   lines.push('## Summary', '', '| | |', '|---|---|');
+  const upgrade = run.steps.find((step) => step.id === 'upgrade');
+  const design = run.steps.find((step) => step.id === 'design-system');
+  if (upgrade?.detail) lines.push(`| Angular | ${upgrade.status === 'failed' ? `**${upgrade.detail}**` : upgrade.detail} |`);
+  if (design?.detail) lines.push(`| Design system | ${design.status === 'failed' ? `**${design.detail}**` : design.detail} |`);
   lines.push(`| Pages modernized | ${result.pagesDone} of ${total} |`);
   lines.push(`| Flagged for a developer | ${result.pagesFlagged} |`);
   lines.push(`| Skipped | ${result.pagesSkipped} |`);
@@ -48,6 +52,15 @@ export function buildReport(input: ReportInput): string {
     lines.push('## Needs attention', '');
     for (const page of flagged) lines.push(`- **${page.name}** (\`${page.route}\`): ${page.note ?? 'flagged'}`);
     lines.push('');
+  }
+
+  if (design?.status === 'done') {
+    lines.push(
+      '## Design system',
+      '',
+      'Refit installed PrimeNG and wrote the brand into `src/app/theme`: `brand-preset.ts` (the PrimeNG preset), `brand.css` (variables and layout classes) and `BRAND.md` (how to use them). Change the brand in Refit and regenerate these files instead of editing them by hand.',
+      '',
+    );
   }
 
   lines.push('## Pages', '');

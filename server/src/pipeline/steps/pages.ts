@@ -1,6 +1,5 @@
 import type { ApiDiff, PageConfig } from '@refit/shared';
 import { apiChanged, diffApiCalls, newConsoleErrors } from '../../browser/api-calls.js';
-import { appRelative, enforceGuard } from '../../guard/guard.js';
 import { commitAll, headCommit, resetHard } from '../../git/workspace.js';
 import { succeeded } from '../../proc/run.js';
 import { parsePageReport } from '../../prompts/report.js';
@@ -8,6 +7,9 @@ import { fixPrompt, pagePrompt } from '../../prompts/tasks.js';
 import { runAgentTask } from '../agent.js';
 import { activity, log, throwIfCancelled, type RunContext } from '../context.js';
 import { logTail, runBuild } from './build.js';
+import { THEME_FOLDER } from './design-system.js';
+import { runGuard } from './guard-run.js';
+import { installedVersion } from './packages.js';
 import { shareBeforeShots, shootPage, startDevServer, stopDevServer } from './shots.js';
 
 const REBUILD_WAIT_MS = 120_000;
@@ -18,6 +20,7 @@ export async function pagesStep(ctx: RunContext): Promise<string> {
   let flagged = 0;
   let skipped = 0;
 
+  const designSystem = await describeDesignSystem(ctx);
   // One dev server for all pages: it recompiles after every change.
   if (ctx.pages.length > 0) await startDevServer(ctx, 'to check each page after its changes');
   try {
@@ -31,7 +34,7 @@ export async function pagesStep(ctx: RunContext): Promise<string> {
         log(ctx, 'warn', 'refit', `The run budget ($${ctx.budget.perRunUsd.toFixed(2)}) is used up. ${skipped} pages were not started.`);
         break;
       }
-      const outcome = await modernizePage(ctx, page, index);
+      const outcome = await modernizePage(ctx, page, index, designSystem);
       if (outcome === 'done') done++;
       else flagged++;
     }
@@ -45,7 +48,7 @@ export async function pagesStep(ctx: RunContext): Promise<string> {
   return parts.join(', ');
 }
 
-async function modernizePage(ctx: RunContext, page: PageConfig, index: number): Promise<'done' | 'flagged'> {
+async function modernizePage(ctx: RunContext, page: PageConfig, index: number, designSystem: string): Promise<'done' | 'flagged'> {
   const { workspace } = ctx.paths;
   ctx.emit({ type: 'page', pageId: page.id, status: 'working' });
   activity(ctx, `Restyling the ${page.name} page (${index + 1} of ${ctx.pages.length})`);
@@ -64,7 +67,7 @@ async function modernizePage(ctx: RunContext, page: PageConfig, index: number): 
       files: page.files,
       beforeShots: shots.relative,
       buildCommand: ctx.commands.build,
-      designSystem: 'PrimeNG with the brand preset (src/app/theme/brand-preset.ts) and the variables in src/app/theme/brand.css.',
+      designSystem,
     }),
   });
   throwIfCancelled(ctx);
@@ -74,7 +77,7 @@ async function modernizePage(ctx: RunContext, page: PageConfig, index: number): 
     return flag(ctx, page, `The agent could not finish (${result.error ?? 'unknown reason'}). Changes were rolled back.`);
   }
 
-  await guard(ctx, page, checkpoint);
+  await runGuard(ctx, checkpoint, page.id);
 
   let build = await runBuild(ctx, `The build after the ${page.name} page`);
   throwIfCancelled(ctx);
@@ -82,13 +85,13 @@ async function modernizePage(ctx: RunContext, page: PageConfig, index: number): 
     log(ctx, 'warn', 'refit', `The build broke after the ${page.name} page. Asking the agent to fix it.`);
     activity(ctx, `Fixing the build after the ${page.name} page`);
     if (ctx.budget.canStart(page.id)) {
-      const changed = await guard(ctx, page, checkpoint);
+      const changed = await runGuard(ctx, checkpoint, page.id);
       await runAgentTask(ctx, { kind: 'fix', label: `${page.name} page`, files: page.files }, {
         scope: page.id,
         prompt: fixPrompt({ label: `${page.name} page`, buildCommand: ctx.commands.build, logTail: logTail(build), changedFiles: changed }),
       });
       throwIfCancelled(ctx);
-      await guard(ctx, page, checkpoint);
+      await runGuard(ctx, checkpoint, page.id);
       build = await runBuild(ctx, `The build after fixing the ${page.name} page`);
       throwIfCancelled(ctx);
     }
@@ -150,6 +153,16 @@ async function checkPage(ctx: RunContext, page: PageConfig, compilesBefore: numb
   return { apiDiff, newErrors };
 }
 
+/** What the page prompt says about the design system: the installed PrimeNG and where the brand guide is. */
+async function describeDesignSystem(ctx: RunContext): Promise<string> {
+  const primeng = await installedVersion(ctx, 'primeng');
+  const theme = `${ctx.app.scan?.angular?.sourceRoot ?? 'src'}/${THEME_FOLDER}`;
+  return [
+    `PrimeNG ${primeng ?? '(see node_modules/primeng/package.json)'} with the ${ctx.brand.name} brand.`,
+    `Read ${theme}/BRAND.md first: it says which brand color is for what, which PrimeNG component to use for each need, and the layout classes in ${theme}/brand.css (.brand-page, .brand-card, .brand-toolbar, .brand-form-grid, ...).`,
+  ].join(' ');
+}
+
 /** Pages the agent review rated "high" may use the stronger model, when the run allows it. */
 function isComplex(ctx: RunContext, page: PageConfig): boolean {
   if (!ctx.settings.strongModelForComplexPages) return false;
@@ -161,18 +174,6 @@ export function describeDiff(diff: ApiDiff): string {
   if (diff.added.length) parts.push(`new: ${diff.added.slice(0, 3).join(', ')}`);
   if (diff.removed.length) parts.push(`missing: ${diff.removed.slice(0, 3).join(', ')}`);
   return parts.join('; ');
-}
-
-/** Runs the guard, reports changed files and records reverts. Returns the changed files, relative to the app folder. */
-async function guard(ctx: RunContext, page: PageConfig, checkpoint: string): Promise<string[]> {
-  const result = await enforceGuard(ctx.paths.workspace, checkpoint, ctx.guardPolicy);
-  for (const reverted of result.reverted) {
-    ctx.facts.protectedReverts.push({ file: reverted.file, reason: reverted.reason, pageId: page.id });
-    log(ctx, 'warn', 'guard', `Reverted ${reverted.file}: ${reverted.reason}. Agents may not change it.`);
-  }
-  for (const file of result.changed) if (file.sensitive && !file.reverted) ctx.facts.sensitiveChanges.add(file.file);
-  ctx.emit({ type: 'files', pageId: page.id, changed: result.changed });
-  return result.changed.filter((file) => !file.reverted).map((file) => appRelative(file.file, ctx.appDir) ?? file.file);
 }
 
 function flag(ctx: RunContext, page: PageConfig, note: string, extra: { apiDiff?: ApiDiff; report?: ReturnType<typeof parsePageReport>; newConsoleErrors?: string[] } = {}): 'flagged' {

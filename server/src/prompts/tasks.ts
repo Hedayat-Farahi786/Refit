@@ -109,6 +109,8 @@ export interface FoundationPromptInput {
   /** PrimeNG 18–20 animate through Angular's animations package. */
   needsAngularAnimations: boolean;
   buildCommand: string;
+  /** Where Refit wrote the brand files, e.g. "src/app/theme". */
+  themeFolder: string;
 }
 
 export function foundationPrompt(input: FoundationPromptInput): string {
@@ -116,15 +118,16 @@ export function foundationPrompt(input: FoundationPromptInput): string {
   return [
     'Task: set up the design system and modernize the app shell.',
     '',
-    `Refit installed PrimeNG ${input.primeng} with ${input.themePackage} and primeicons, and wrote two files from the brand:`,
-    '- src/app/theme/brand-preset.ts (exports BrandPreset)',
-    '- src/app/theme/brand.css (brand CSS variables and base typography)',
+    `Refit installed PrimeNG ${input.primeng} with ${input.themePackage} and primeicons, and wrote three files from the brand (do not edit them):`,
+    `- ${input.themeFolder}/brand-preset.ts (exports BrandPreset)`,
+    `- ${input.themeFolder}/brand.css (brand variables, base type and layout classes)`,
+    `- ${input.themeFolder}/BRAND.md (how to use the brand: read it first)`,
     '',
     'Do these in order:',
     `1. Register PrimeNG in ${where}: providePrimeNG({ theme: { preset: BrandPreset, options: { darkModeSelector: '.app-dark' } } })` +
       (input.needsAngularAnimations ? ', and provideAnimationsAsync() if animations are not provided yet.' : '.'),
     '   Only add providers. Keep every existing provider, route, interceptor and sign-in setting exactly as it is.',
-    `2. Load the styles globally from ${input.globalStyles ?? 'the global stylesheet'}: import primeicons/primeicons.css and src/app/theme/brand.css. Do not edit angular.json.`,
+    `2. Load the styles globally from ${input.globalStyles ?? 'the global stylesheet'}: import primeicons/primeicons.css and ${input.themeFolder}/brand.css. Do not edit angular.json.`,
     '3. Modernize the app shell (header, navigation, user menu, footer) with PrimeNG and the brand. Keep every link, sign-in and sign-out action, permission check and router outlet.',
     '4. Add one global p-toast and one p-confirmdialog to the root component, with MessageService and ConfirmationService provided once.',
     '',

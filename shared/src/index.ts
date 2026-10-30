@@ -2,6 +2,7 @@ export * from './api.js';
 export * from './events.js';
 export * from './glob.js';
 export * from './ids.js';
+export * from './primeng.js';
 export * from './brand/brand.js';
 export * from './brand/color.js';
 export * from './brand/palette.js';

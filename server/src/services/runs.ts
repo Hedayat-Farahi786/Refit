@@ -1,7 +1,7 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import type { AppRecord, ChangedFile, ProviderId, RunEvent, RunEventBody, RunRecord, RunSettings } from '@refit/shared';
-import { applyRunEvent, MODERNIZE_STEPS, shortId } from '@refit/shared';
+import { MODERNIZE_STEPS, applyRunEvent, normalizeBrand, shortId } from '@refit/shared';
 import type { BrowserManager } from '../browser/session.js';
 import type { ServerContext } from '../context.js';
 import { classifyPath, type GuardPolicy } from '../guard/guard.js';
@@ -108,12 +108,16 @@ export class RunService {
     const log = await RunEventLog.create(runDir);
     this.remember(runId, log);
     const controller = new AbortController();
-    const policy: GuardPolicy = { appDir, protectedPaths: config.protectedPaths, sensitivePaths: config.sensitivePaths };
+    // The generated theme files belong to Refit: agents use them but never edit them.
+    const themeFiles = ['**/app/theme/brand-preset.ts', '**/app/theme/brand.css', '**/app/theme/BRAND.md'];
+    const policy: GuardPolicy = { appDir, protectedPaths: [...config.protectedPaths, ...themeFiles], sensitivePaths: config.sensitivePaths };
+    const brand = normalizeBrand(this.ctx.store.get((state) => state.brands.find((candidate) => candidate.id === settings.brandId))!);
     const runCtx: RunContext = {
       runId,
       app,
       pages,
       settings,
+      brand,
       config,
       provider,
       playbook,

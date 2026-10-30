@@ -1,15 +1,8 @@
 import semver from 'semver';
+import type { UpgradeHop } from '../types.js';
 import { ANGULAR_NODE_SUPPORT } from './versions.js';
 
-/** One major-version step of an Angular upgrade. */
-export interface UpgradeHop {
-  from: number;
-  to: number;
-  /** Packages for `ng update`, e.g. "@angular/core@18". */
-  packages: string[];
-  /** Node versions this Angular major supports. */
-  node: string;
-}
+export type { UpgradeHop } from '../types.js';
 
 /**
  * Plans the upgrade one major at a time, as the Angular update guide requires, with Angular Material

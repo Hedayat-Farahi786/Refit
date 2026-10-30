@@ -41,6 +41,9 @@ export async function prepareStep(ctx: RunContext): Promise<string> {
   const branch = `refit/modernize-${dateStamp()}-${ctx.runId}`;
   await createBranch(workspace, branch);
   await excludeFromGit(workspace, `${REFIT_FOLDER}/`);
+  // Never commit dependencies or build output, even in repos without a .gitignore for them.
+  // (This only affects untracked files; anything the repo already tracks stays tracked.)
+  for (const folder of ['node_modules/', 'dist/', '.angular/']) await excludeFromGit(workspace, folder);
   await ensureCommitIdentity(workspace);
 
   ctx.facts.branch = branch;

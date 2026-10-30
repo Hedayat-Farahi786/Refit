@@ -13,3 +13,8 @@ export function pickAdapter(repo: RepoContext): StackAdapter | null {
   }
   return best?.adapter ?? null;
 }
+
+/** The adapter a scan named (AppRecord.scan.stack), or null for an unknown stack. */
+export function adapterById(id: string | null | undefined): StackAdapter | null {
+  return STACK_ADAPTERS.find((adapter) => adapter.id === id) ?? null;
+}

@@ -7,10 +7,16 @@ import { angularFindings } from './findings.js';
 import { detectLibraries } from './libraries.js';
 import { extractRoutes } from './routes.js';
 import { nodeCompatibility, resolveAngularVersion } from './versions.js';
+import { angularDesignSystem } from './primeng.js';
+import { findAppShell } from './shell.js';
+import { ngUpdateCommand, planUpgradeHops } from './upgrade.js';
 import { readAngularWorkspace } from './workspace.js';
 
 export const angularAdapter: StackAdapter = {
   id: 'angular',
+  frameworkPackage: '@angular/core',
+  upgrades: { plan: planUpgradeHops, command: ngUpdateCommand },
+  designSystem: angularDesignSystem,
   label: 'Angular',
 
   detect(repo: RepoContext): number {
@@ -34,6 +40,7 @@ export const angularAdapter: StackAdapter = {
     }
 
     const mainText = workspace.main ? await repo.readText(workspace.main) : null;
+    const shell = await findAppShell(repo, workspace);
     const bootstrap = mainText?.includes('bootstrapApplication(')
       ? 'standalone'
       : mainText?.includes('bootstrapModule(')
@@ -85,6 +92,9 @@ export const angularAdapter: StackAdapter = {
         project: workspace.project,
         sourceRoot: workspace.sourceRoot,
         baseHref: workspace.baseHref,
+        stylesFile: shell.stylesFile,
+        providersFile: shell.providersFile,
+        shellFiles: shell.shellFiles,
       },
     };
   },

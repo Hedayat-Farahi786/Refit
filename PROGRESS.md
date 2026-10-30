@@ -12,8 +12,8 @@ Living status of the build. The plan and its reasoning are in [PLAN.md](PLAN.md)
 | 4. Claude Agent | Done |
 | 5. GitHub Copilot | Paused (Angular first, as asked); groundwork and research done |
 | Design and brands (asked for during phase 5) | Done |
-| 6. Upgrade and design system | Next |
-| 7. Polish loop and delivery | Not started |
+| 6. Upgrade and design system | Done |
+| 7. Polish loop and delivery | Next |
 | 8. Finish | Not started |
 
 ## Phase 1: Foundation (done)
@@ -296,6 +296,62 @@ What changed:
 How to try it: open **Brands**, then **Oerlikon**. Change the color or the corners and watch the
 preview. Check **Palette** and **Code**, then **Export**.
 
+## Phase 6: Upgrade and design system (done)
+
+What works:
+
+- **Scan:** Refit now also finds the three places the design system touches:
+  - the app's own global stylesheet (not a package's)
+  - where app-wide providers go (`app.config.ts`, or the `AppModule` for NgModule apps), found by
+    following `main.ts`
+  - the app-shell files: the root component plus header, navigation, sidebar, footer and layout
+    parts
+- **Upgrade Angular** (when the target is newer):
+  - one major at a time with the spec's command:
+    `npx --yes @angular/cli@<n> update @angular/core@<n> @angular/cli@<n>`, plus Material and the
+    CDK when present, with `--allow-dirty --force`
+  - each hop is committed (`refit: upgrade Angular to <n>`) and built
+  - a broken build gets one agent fix (protected files stay protected) and its own commit
+  - if the build still fails, the run stops with a clear message and keeps the branch
+  - hops whose Angular does not officially support the current Node are warned about
+- **Install the design system:**
+  - installs the MIT PrimeNG release for the app's Angular major (18–21) with its theme package
+    and primeicons, plus `@angular/animations` for PrimeNG 18–20; npm retries with
+    `--legacy-peer-deps`
+  - writes `src/app/theme/brand-preset.ts`, `brand.css` and `BRAND.md` from the run's brand, and
+    commits them
+  - Angular 22+ (commercial PrimeNG only) and Angular 17 (no presets) stop with what to do instead
+  - **Foundation task:** register PrimeNG with the BrandPreset (dark mode only via `.app-dark`),
+    load primeicons and brand.css from the global stylesheet, modernize the app shell, and add
+    one global toast and confirm dialog. Guard, build, one fix if needed, then a commit; if it
+    cannot be fixed, it is rolled back and the run stops.
+  - the generated theme files are protected for every agent task
+- **Pages** are told the installed PrimeNG version and to read BRAND.md first.
+- **Report:** the summary has the Angular and design-system rows plus a short Design system
+  section.
+- **Workspaces** never commit `node_modules/`, `dist/` or `.angular/`, even in repos whose
+  `.gitignore` misses them.
+- **Architecture:**
+  - Upgrades and the design system are optional stack-adapter capabilities (`upgrades`,
+    `designSystem`, `frameworkPackage`).
+  - The engine reaches them only through the adapter registry, so the boundary lint rule holds.
+  - The MIT PrimeNG release table lives in the shared package, so Refit's UI (the Modernize hint)
+    and the server agree.
+- **Dry run:** in standalone apps it really registers `providePrimeNG` with the generated
+  BrandPreset and loads the brand styles. Every dry-run build therefore proves the generated
+  preset compiles against the installed PrimeNG.
+- **Tests:**
+  - 252 unit tests, including the shell-file detection and the adapter tables
+  - integration: the dry run installs PrimeNG 21.1.10, writes and protects the theme files,
+    registers PrimeNG, and commits in order
+  - **slow** (`npm run test:slow`): fixture 2 goes from Angular 17 to 21 in four `ng update`
+    hops, each built and committed, then PrimeNG 21.1.10 with Oerlikon, the page, and a passing
+    final build (about 5.5 minutes, needs network)
+
+How to try it: add an Angular 17–20 app and choose **Modernize**. Under **Angular version** pick
+**Upgrade to Angular 21**, choose **Oerlikon**, and start a dry run. The run view shows each hop,
+then PrimeNG and the brand. The branch has one commit per step.
+
 ## Decisions and differences from the spec
 
 1. **PrimeNG 21 and Angular 21, not the newest versions.** PrimeNG 22, `@primeuix/themes` 3 and
@@ -369,6 +425,12 @@ preview. Check **Palette** and **Code**, then **Export**.
     Refit's own theme. The editor sends unsaved changes with `postMessage` on the same origin.
 26. **Export and import happen in the browser.** The web app already shares the generator, so the
     server only stores brands (`POST`, `PUT` and `DELETE /api/brands`).
+27. **Upgrade hops commit before the build.** A hop's `ng update` is committed first, then the
+    build runs. A fix is a separate commit, so a developer can see what Angular changed and what
+    the agent changed.
+28. **The foundation task is the only one that may touch the providers file and the global
+    stylesheet**, and only to add PrimeNG. The generated theme files are protected for every agent
+    task; change the brand in Refit and run again instead.
 
 ## Notes for later phases
 

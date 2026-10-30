@@ -34,7 +34,7 @@ export async function runAgentTask(ctx: RunContext, task: AgentTask, options: Ag
       maxTurns: ctx.config.maxTurns[task.kind],
       signal: ctx.signal,
       ...(options.images && options.images.length > 0 ? { images: options.images } : {}),
-      protectedPaths: ctx.config.protectedPaths,
+      protectedPaths: ctx.guardPolicy.protectedPaths,
       allowedCommands: [ctx.commands.build, ...(ctx.commands.test ? [ctx.commands.test] : [])],
       onEvent: (event) => {
         if (event.kind === 'thought' || event.kind === 'tool') {

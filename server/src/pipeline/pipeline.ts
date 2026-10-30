@@ -9,9 +9,10 @@ import { CancelledError, log, step, StepFailure, type RunContext } from './conte
 import { baselineStep } from './steps/baseline.js';
 import { finalStep } from './steps/final.js';
 import { installStep } from './steps/install.js';
-import { designSystemStep, upgradeStep } from './steps/later.js';
+import { designSystemStep } from './steps/design-system.js';
 import { pagesStep } from './steps/pages.js';
 import { prepareStep } from './steps/prepare.js';
+import { upgradeStep } from './steps/upgrade.js';
 
 export interface PipelineHooks {
   version: string;

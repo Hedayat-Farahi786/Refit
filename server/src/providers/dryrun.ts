@@ -34,6 +34,8 @@ export class DryRunProvider implements AgentProvider {
           await wait();
           args.onEvent({ kind: 'thought', text: 'Dry run: no fix applied.' });
           return { ok: true, text: 'Dry run: no changes were made.', costUsd: 0, requests: 0 };
+        case 'foundation':
+          return await this.foundation(args, wait);
         case 'polish':
           args.onEvent({ kind: 'thought', text: 'Comparing the after screenshots with the UI checklist.' });
           await wait();
@@ -80,6 +82,53 @@ export class DryRunProvider implements AgentProvider {
     }
     args.onEvent({ kind: 'thought', text: 'Checked the inventory: everything is still present and wired the same way.' });
     return { ok: true, text: report(task.label, 'Dry run: the page was marked so the pipeline can be tested without AI.', changes), costUsd: 0, requests: 0 };
+  }
+
+  /**
+   * Registers PrimeNG with the generated BrandPreset in a standalone app's config and loads the
+   * brand styles, so dry runs build and screenshot a real themed app. Other setups only get the
+   * dry-run marker, like pages do.
+   */
+  private async foundation(args: AgentRunArgs, wait: () => Promise<void>): Promise<AgentResult> {
+    args.onEvent({ kind: 'thought', text: 'Reading the app config, the global styles and the app shell.' });
+    await wait();
+    const themeFolder = /- (\S+)\/brand-preset\.ts/.exec(args.prompt)?.[1];
+    const configFile = args.task.files.find((file) => file.endsWith('app.config.ts'));
+    const stylesFile = args.task.files.find((file) => /\.(s?css)$/.test(file) && !file.includes('/app/'));
+    const changes: string[] = [];
+    if (themeFolder && configFile) {
+      const full = path.join(args.cwd, ...configFile.split('/'));
+      const text = await fs.readFile(full, 'utf8');
+      if (!text.includes('providePrimeNG') && /providers:\s*\[/.test(text)) {
+        let preset = path.posix.relative(path.posix.dirname(configFile), `${themeFolder}/brand-preset`);
+        if (!preset.startsWith('.')) preset = `./${preset}`;
+        const next = [
+          "import { providePrimeNG } from 'primeng/config';",
+          `import { BrandPreset } from '${preset}';`,
+          text.replace(/providers:\s*\[/, "providers: [\n    providePrimeNG({ theme: { preset: BrandPreset, options: { darkModeSelector: '.app-dark' } } }),\n    "),
+        ].join('\n');
+        args.onEvent({ kind: 'tool', tool: 'Edit', target: configFile });
+        await fs.writeFile(full, next);
+        changes.push(`Registered PrimeNG with the brand preset in ${configFile}.`);
+        await wait();
+      }
+    }
+    if (themeFolder && stylesFile) {
+      const full = path.join(args.cwd, ...stylesFile.split('/'));
+      const text = await fs.readFile(full, 'utf8');
+      if (!text.includes('brand')) {
+        let css = path.posix.relative(path.posix.dirname(stylesFile), `${themeFolder}/brand`);
+        if (!css.startsWith('.')) css = `./${css}`;
+        // Sass inlines a .css file loaded with @use; plain CSS files @import it.
+        const head = stylesFile.endsWith('.scss') ? [`@use '${css}';`, "@import 'primeicons/primeicons.css';"] : ["@import 'primeicons/primeicons.css';", `@import '${css}.css';`];
+        args.onEvent({ kind: 'tool', tool: 'Edit', target: stylesFile });
+        await fs.writeFile(full, `${head.join('\n')}\n\n${text}`);
+        changes.push(`Loaded primeicons and the brand styles in ${stylesFile}.`);
+        await wait();
+      }
+    }
+    const marked = await this.edit({ ...args, task: { ...args.task, files: args.task.files.filter((file) => file !== configFile && file !== stylesFile) } }, wait);
+    return { ...marked, text: report(args.task.label, 'Dry run: PrimeNG is registered with the brand and the app shell is marked.', changes) };
   }
 
   private async review(args: AgentRunArgs, wait: () => Promise<void>): Promise<AgentResult> {

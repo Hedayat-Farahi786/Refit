@@ -2,7 +2,7 @@ import { Component, computed, effect, inject, input, signal, untracked } from '@
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import type { ProviderId, ProviderStatus, RunSettings } from '@refit/shared';
-import { estimateMaxCost } from '@refit/shared';
+import { estimateMaxCost, primeNgFor } from '@refit/shared';
 import { Button } from 'primeng/button';
 import { InputNumber } from 'primeng/inputnumber';
 import { Select } from 'primeng/select';
@@ -379,9 +379,12 @@ export class Modernize {
 
   protected targetHint(): string {
     const major = this.app()?.scan?.angular?.major ?? null;
-    if (this.settings.targetAngularMajor === 'keep' || major === null) return 'PrimeNG is installed in the version that matches.';
+    const target = this.settings.targetAngularMajor === 'keep' ? major : (this.settings.targetAngularMajor as number);
+    const release = target !== null ? primeNgFor(target) : null;
+    const install = release ? `Then PrimeNG ${release.primeng} (MIT) and the brand are installed.` : 'PrimeNG is installed in the version that matches.';
+    if (this.settings.targetAngularMajor === 'keep' || major === null) return install;
     const steps = (this.settings.targetAngularMajor as number) - major;
-    return `${plural(steps, 'upgrade step')}, one major version at a time, each built and committed.`;
+    return `${plural(steps, 'upgrade step')}, one major version at a time, each built and committed. ${install}`;
   }
 
   protected costValue(): string {

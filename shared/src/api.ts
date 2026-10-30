@@ -85,6 +85,12 @@ export interface AngularScan {
   sourceRoot: string;
   /** Base path the app is served under, e.g. "/portal/" (null for "/"). */
   baseHref: string | null;
+  /** The app's own global stylesheet, e.g. "src/styles.scss" (older scans do not have it). */
+  stylesFile?: string | null;
+  /** Where app-wide providers are registered: app.config.ts or the AppModule. */
+  providersFile?: string | null;
+  /** The root component and the layout parts around every page. */
+  shellFiles?: string[];
 }
 
 export interface GitInfo {

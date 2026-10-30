@@ -1,5 +1,5 @@
 import path from 'node:path';
-import type { ApiDiff, AppRecord, LogLevel, LogSource, ModernizeStepId, PageConfig, RunEventBody, RunRecord, RunSettings, StepStatus } from '@refit/shared';
+import type { ApiDiff, AppRecord, Brand, LogLevel, LogSource, ModernizeStepId, PageConfig, RunEventBody, RunRecord, RunSettings, StepStatus } from '@refit/shared';
 import type { DevServer } from '../browser/devserver.js';
 import type { BrowserManager, CaptureSession } from '../browser/session.js';
 import type { RefitConfig } from '../config/config.js';
@@ -18,6 +18,8 @@ export interface RunContext {
   /** Pages to modernize, in order. */
   pages: PageConfig[];
   settings: RunSettings;
+  /** The brand this run applies, as it was when the run started. */
+  brand: Brand;
   config: RefitConfig;
   provider: AgentProvider;
   playbook: string;

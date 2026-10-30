@@ -28,6 +28,9 @@ describe('scanApp on the fixture apps', () => {
 
     expect(scan.stack).toBe('angular');
     expect(scan.angular).toMatchObject({ major: 21, bootstrap: 'standalone', hashRouting: false, sourceRoot: 'src' });
+    // Where the design system goes: the app's own stylesheet (not Bootstrap's), app.config.ts and the shell.
+    expect(scan.angular).toMatchObject({ stylesFile: 'src/styles.scss', providersFile: 'src/app/app.config.ts' });
+    expect(scan.angular?.shellFiles).toEqual(['src/app/app.component.ts', 'src/app/app.component.html', 'src/app/app.component.scss']);
     expect(scan.uiLibraries).toContain('Bootstrap');
     expect(scan.msal).toBe(false);
     expect(scan.git).toMatchObject({ isRepo: true, branch: 'main', dirty: false });
@@ -53,6 +56,9 @@ describe('scanApp on the fixture apps', () => {
     const scan = await scanApp(appFor(folder), { sourcesDir: await tempDir(), targetAngularMajor: 21 });
 
     expect(scan.angular).toMatchObject({ major: 17, bootstrap: 'ngmodule' });
+    // NgModule apps register providers in the AppModule, and its bootstrap component is the shell.
+    expect(scan.angular).toMatchObject({ stylesFile: 'src/styles.scss', providersFile: 'src/app/app.module.ts' });
+    expect(scan.angular?.shellFiles).toEqual(['src/app/app.component.ts', 'src/app/app.component.html', 'src/app/app.component.scss']);
     expect(scan.uiLibraries).toEqual(['Angular Material']);
     expect(scan.pages.map((page) => [page.route, page.name, page.lazy])).toEqual([
       ['/', 'Home', false],

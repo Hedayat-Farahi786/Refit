@@ -49,7 +49,7 @@ describe('dry run on ng-modern-bootstrap', () => {
       install: 'done',
       baseline: 'done',
       upgrade: 'skipped',
-      'design-system': 'skipped',
+      'design-system': 'done',
       pages: 'warn',
       final: 'done',
       ready: 'done',
@@ -81,10 +81,16 @@ describe('dry run on ng-modern-bootstrap', () => {
     expect(served.statusCode).toBe(200);
     expect(served.headers['content-type']).toBe('image/jpeg');
 
-    // The branch has one commit per modernized page and never touches the protected service.
+    // The branch has the design system, then one commit per modernized page, and never touches the protected service.
     const workspace = run.workspace!;
     const log = await gitIn(workspace, 'log', '--format=%s', `${run.baseCommit}..HEAD`);
-    expect(log.split('\n').sort()).toEqual(['refit(ui): modernize Dashboard', 'refit(ui): modernize Request details', 'refit(ui): modernize Requests']);
+    expect(log.split('\n').reverse()).toEqual([
+      'refit: install PrimeNG 21.1.10 and the Oerlikon brand',
+      'refit(ui): design system and app shell',
+      'refit(ui): modernize Dashboard',
+      'refit(ui): modernize Requests',
+      'refit(ui): modernize Request details',
+    ]);
     const changed = await gitIn(workspace, 'diff', '--name-only', run.baseCommit!);
     expect(changed.split('\n')).not.toContain('src/app/services/request.service.ts');
     expect(changed.split('\n')).not.toContain('src/app/pages/request-form/request-form.component.html');
@@ -94,6 +100,9 @@ describe('dry run on ng-modern-bootstrap', () => {
     const report = await fs.readFile(run.result!.reportPath!, 'utf8');
     expect(report).toContain('# Front-end modernization: Service desk');
     expect(report).toContain('| Pages modernized | 3 of 4 |');
+    expect(report).toContain('| Angular | Keeping Angular 21 |');
+    expect(report).toContain('| Design system | PrimeNG 21.1.10 with Oerlikon |');
+    expect(report).toContain('## Design system');
     expect(report).toContain('## Protected files the agent touched (reverted)');
     expect(report).toContain('`src/app/services/request.service.ts`');
     const events: RunEvent[] = await server.services.runs.events(run.id, 0);
@@ -101,6 +110,16 @@ describe('dry run on ng-modern-bootstrap', () => {
     expect(events.at(-1)?.type).toBe('result');
     expect(events.some((event) => event.type === 'log' && event.source === 'guard')).toBe(true);
     expect(events.some((event) => event.type === 'agent' && event.kind === 'tool')).toBe(true);
+
+    // The design system: PrimeNG and the brand installed, the theme files written, PrimeNG registered.
+    expect(run.steps.find((step) => step.id === 'upgrade')?.detail).toBe('Keeping Angular 21');
+    expect(run.steps.find((step) => step.id === 'design-system')?.detail).toBe('PrimeNG 21.1.10 with Oerlikon');
+    const appFolder = run.workspace!;
+    const pkg = JSON.parse(await fs.readFile(path.join(appFolder, 'package.json'), 'utf8')) as { dependencies: Record<string, string> };
+    expect(pkg.dependencies).toMatchObject({ primeng: '21.1.10', '@primeuix/themes': '2.0.3', primeicons: '7.0.0' });
+    expect(await fs.readFile(path.join(appFolder, 'src/app/theme/brand-preset.ts'), 'utf8')).toContain("500: '#eb0000'");
+    expect(await fs.readFile(path.join(appFolder, 'src/app/theme/BRAND.md'), 'utf8')).toContain('# Oerlikon: design system');
+    expect(await fs.readFile(path.join(appFolder, 'src/app/app.config.ts'), 'utf8')).toContain('providePrimeNG({ theme: { preset: BrandPreset');
 
     // Changes and diffs for the developer view.
     const changes = await server.services.runs.changes(run.id);
